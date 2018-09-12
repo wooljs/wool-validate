@@ -38,11 +38,7 @@ Object.entries({
   Multi: 'MultiCheck',
   None: 'NoCheck'
 }).forEach(([k,v])=>{
-  try {
-    Checks[k] = Checks[v].build
-  } catch(e) {
-    throw new Error(`while processing ${k} from`, e.message+'\n'+e.stack)
-  }
+  Checks[k] = Checks[v].build
 })
 
 module.exports = Checks

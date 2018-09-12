@@ -17,14 +17,43 @@ const test = require('tape-async')
 
 // TODO ValidID, Crypto asymetric
 
-test('Checks Multi + toDTO', async function(t) {
+test('Checks.Multi Error on param, toDTO, keptParam, drop,...', async function(t) {
+  t.throws(() => Checks.Multi([ 'plop' ]), /^InvalidRuleError/)
+  let check
+  check = Checks.Multi([
+    Checks.Num('Numkey'),
+    Checks.Str('strkey')
+  ])
+
+  t.deepEqual(check.toDTO(), {Numkey: true, strkey: true})
+  t.deepEqual(check.keptParam(), [{ k: 'Numkey', keep: true }, { k: 'strkey', keep: true }])
+
+  check = Checks.Multi([
+    Checks.Num('Numkey'),
+    Checks.Str('strkey').drop()
+  ])
+
+  t.deepEqual(check.toDTO(), {Numkey: true, strkey: true})
+  t.deepEqual(check.keptParam(), [{ k: 'Numkey', keep: true }])
+
+  check = Checks.Multi([
+    Checks.Num('Numkey'),
+    Checks.Str('strkey').drop().undrop()
+  ])
+
+  t.deepEqual(check.toDTO(), {Numkey: true, strkey: true})
+  t.deepEqual(check.keptParam(), [{ k: 'Numkey', keep: true }, { k: 'strkey', keep: true }])
+
+  t.plan(7)
+  t.end()
+})
+
+test('Checks.Multi', async function(t) {
   let check = Checks.Multi([
       Checks.Num('Numkey'),
       Checks.Str('strkey')
     ])
     , store = new Store()
-
-  t.deepEqual(check.toDTO(), {Numkey: true, strkey: true})
 
   t.ok(await check.validate(store, { Numkey: 42, strkey: 'toto' }))
   t.ok(await check.validate(store, { Numkey: 42, strkey: 'toto', key: false }))
@@ -50,11 +79,84 @@ test('Checks Multi + toDTO', async function(t) {
     t.deepEqual(e.toString(), 'InvalidRuleError: invalid result while processing NumberCheck[k:Numkey] for param {"strkey":"toto"}')
   })
 
-  t.plan(9)
+  t.plan(8)
   t.end()
 })
 
-test('rule-param Bool', async function(t) {
+test('Checks.None', async function(t) {
+  let check = Checks.None()
+    , store = new Store()
+
+  t.ok(await check.validate(store, { }))
+  t.ok(await check.validate(store, { key: true }))
+  t.ok(await check.validate(store, { key: false }))
+  t.ok(await check.validate(store, { key: 'foo' }))
+  t.ok(await check.validate(store, { foo: 42 }))
+  t.ok(await check.validate(store, { key: true, bar: 42, foo: 'bar' }))
+  t.plan(6)
+  t.end()
+})
+
+test('Checks.Id', async function(t) {
+  let check = Checks.Id('id', {prefix: 'test: '})
+    , store = new Store()
+  await store.set('test: 42', {id: '42', foo: 'bar'})
+
+  t.ok(await check.validate(store, { id: '42' }))
+
+  await check.validate(store, { id: '666' })
+  .then(()=> t.fail('should throw') )
+  .catch(e => {
+    t.ok(e instanceof Checks.InvalidRuleError)
+    t.deepEqual(e.toString(), 'InvalidRuleError: invalid id: 666 does not exist')
+  })
+
+  await check.validate(store, { foo: true })
+  .then(()=> t.fail('should throw') )
+  .catch(e => {
+    t.ok(e instanceof Checks.InvalidRuleError)
+    t.deepEqual(e.toString(), 'InvalidRuleError: invalid id: undefined does not exist')
+  })
+
+  t.plan(5)
+  t.end()
+})
+
+test('Checks.Id.asNew()', async function(t) {
+  let algo = () => '42'
+    , check = Checks.Id('id', {prefix: 'test: ', algo}).asNew()
+    , store = new Store()
+
+  t.ok(await check.validate(store, { foo: true }))
+
+  await store.set('test: 42', {id: '42', foo: 'bar'})
+
+  await check.validate(store, { foo: true })
+  .then(()=> t.fail('should throw') )
+  .catch(e => {
+    t.ok(e instanceof Checks.InvalidRuleError)
+    t.deepEqual(e.toString(), 'InvalidRuleError: should not be in store id 42')
+  })
+
+  await check.validate(store, { id: '42' })
+  .then(()=> t.fail('should throw') )
+  .catch(e => {
+    t.ok(e instanceof Checks.InvalidRuleError)
+    t.deepEqual(e.toString(), 'InvalidRuleError: should not contain asNew param id')
+  })
+
+  await check.validate(store, { id: '666' })
+  .then(()=> t.fail('should throw') )
+  .catch(e => {
+    t.ok(e instanceof Checks.InvalidRuleError)
+    t.deepEqual(e.toString(), 'InvalidRuleError: should not contain asNew param id')
+  })
+
+  t.plan(7)
+  t.end()
+})
+
+test('Checks.Bool', async function(t) {
   let check = Checks.Bool('key')
     , store = new Store()
 
@@ -66,7 +168,7 @@ test('rule-param Bool', async function(t) {
   t.end()
 })
 
-test('rule-param Num', async function(t) {
+test('Checks.Num', async function(t) {
   let check = Checks.Num('key')
     , store = new Store()
 
@@ -77,7 +179,7 @@ test('rule-param Num', async function(t) {
   t.end()
 })
 
-test('rule-param Str', async function(t) {
+test('Checks.Str', async function(t) {
   let check = Checks.Str('key')
     , store = new Store()
 
@@ -88,7 +190,7 @@ test('rule-param Str', async function(t) {
   t.end()
 })
 
-test('rule-param Str.asDate', async function(t) {
+test('Checks.Str.asDate', async function(t) {
   let check = Checks.Str('key').asDate()
     , store = new Store()
     , p
@@ -110,7 +212,37 @@ test('rule-param Str.asDate', async function(t) {
   t.end()
 })
 
-test('rule-param Str.regex', async function(t) {
+test('Checks.Str.predicate', async function(t) {
+  let check = Checks.Str('key').predicate(s => s.indexOf('f') === 0 )
+    , store = new Store()
+
+  t.ok(await check.validate(store, { key: 'foo' }))
+  t.notOk(await check.validate(store, { key: 'bar' }))
+  t.notOk(await check.validate(store, { key: 'another' }))
+  t.notOk(await check.validate(store, { key: 42 }))
+  t.notOk(await check.validate(store, { foo: 'bar' }))
+  t.plan(5)
+  t.end()
+})
+
+test('Checks.Str.parse', async function(t) {
+  let check = Checks.Str('key').parse(s => s.toUpperCase())
+    , store = new Store()
+    , p
+
+  t.ok(await check.validate(store, p = { key: 'foo' }))
+  t.deepEqual(p, { key: 'FOO' })
+
+  t.ok(await check.validate(store, p = { key: 'bar' }))
+  t.deepEqual(p, { key: 'BAR' })
+
+  t.notOk(await check.validate(store, { key: 42 }))
+  t.notOk(await check.validate(store, { foo: 'bar' }))
+  t.plan(6)
+  t.end()
+})
+
+test('Checks.Str.regex', async function(t) {
   let check = Checks.Str('key').regex(/^f/)
     , store = new Store()
 
@@ -123,7 +255,7 @@ test('rule-param Str.regex', async function(t) {
   t.end()
 })
 
-test('rule-param Str.regex.crypto', async function(t) {
+test('Checks.Str.regex.crypto', async function(t) {
   let check = Checks.Str('key').regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{8,}$/).crypto(x => x)
     , store = new Store()
 
@@ -137,7 +269,7 @@ test('rule-param Str.regex.crypto', async function(t) {
   t.end()
 })
 
-test('rule-param Str.regex.crypto.check', async function(t) {
+test('Checks.Str.regex.crypto.check', async function(t) {
   let check = Checks.Str('key')
     .regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{8,}$/)
     .crypto(x => x)
@@ -164,7 +296,7 @@ test('rule-param Str.regex.crypto.check', async function(t) {
   t.end()
 })
 
-test('rule-param Enum', async function(t) {
+test('Checks.Enum', async function(t) {
   let check = Checks.Enum('key', [ 'foo', 'bar', 'another' ])
     , store = new Store()
 
@@ -176,7 +308,7 @@ test('rule-param Enum', async function(t) {
   t.end()
 })
 
-test('rule-param Struct', async function(t) {
+test('Checks.Struct', async function(t) {
   let check = Checks.Struct('key', [ Checks.Num('int'), Checks.Str('str'), Checks.Enum('rank', [ 'S', 'A', 'B' ]) ])
     , store = new Store()
 
@@ -193,7 +325,7 @@ test('rule-param Struct', async function(t) {
   t.end()
 })
 
-test('rule-param List', async function(t) {
+test('Checks.List', async function(t) {
   let check = Checks.List(Checks.Str('key'))
     , store = new Store()
 
