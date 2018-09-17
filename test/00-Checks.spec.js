@@ -97,7 +97,31 @@ test('Checks.None', async function(t) {
   t.end()
 })
 
+test('Checks.Any', async function(t) {
+  let check = Checks.Any()
+    , store = new Store()
+
+  t.ok(await check.validate(store, { }))
+  t.ok(await check.validate(store, { key: true }))
+  t.ok(await check.validate(store, { key: false }))
+  t.ok(await check.validate(store, { key: 'foo' }))
+  t.ok(await check.validate(store, { foo: 42 }))
+  t.ok(await check.validate(store, { key: true, bar: 42, foo: 'bar' }))
+  t.plan(6)
+  t.end()
+})
+
 test('Checks.Id', async function(t) {
+  let check = Checks.Id('id')
+    , store = new Store()
+
+  await store.set('42', {id: '42', foo: 'bar'})
+  t.ok(await check.validate(store, {id: '42', foo: true }))
+  t.plan(1)
+  t.end()
+})
+
+test('Checks.Id prefix', async function(t) {
   let check = Checks.Id('id', {prefix: 'test: '})
     , store = new Store()
   await store.set('test: 42', {id: '42', foo: 'bar'})
@@ -118,11 +142,25 @@ test('Checks.Id', async function(t) {
     t.deepEqual(e.toString(), 'InvalidRuleError: invalid id: undefined does not exist')
   })
 
-  t.plan(5)
+  t.ok(check.isOne('test: 42'))
+
+  t.plan(6)
   t.end()
 })
 
 test('Checks.Id.asNew()', async function(t) {
+  let check = Checks.Id('id', {prefix: 'test: '}).asNew()
+    , store = new Store()
+    , p
+
+  t.ok(await check.validate(store, p = { foo: true }))
+  t.ok('id' in p)
+  t.ok(/^test: /.test(check.as(p.id)))
+  t.plan(3)
+  t.end()
+})
+
+test('Checks.Id.asNew() algo', async function(t) {
   let algo = () => '42'
     , check = Checks.Id('id', {prefix: 'test: ', algo}).asNew()
     , store = new Store()
@@ -152,7 +190,9 @@ test('Checks.Id.asNew()', async function(t) {
     t.deepEqual(e.toString(), 'InvalidRuleError: should not contain asNew param id')
   })
 
-  t.plan(7)
+  t.notOk(check.isMandatory())
+
+  t.plan(8)
   t.end()
 })
 
@@ -173,9 +213,94 @@ test('Checks.Num', async function(t) {
     , store = new Store()
 
   t.ok(await check.validate(store, { key: 42 }))
+  t.ok(await check.validate(store, { key: 3.14159 }))
   t.notOk(await check.validate(store, { key: 'foo' }))
   t.notOk(await check.validate(store, { foo: 42 }))
-  t.plan(3)
+  t.plan(4)
+  t.end()
+})
+
+test('Checks.Num.predicate', async function(t) {
+  let check = Checks.Num('key').predicate(x => Number.isInteger(Math.sqrt(x)))
+    , store = new Store()
+
+  t.ok(await check.validate(store, { key: 1 }))
+  t.ok(await check.validate(store, { key: 4 }))
+  t.ok(await check.validate(store, { key: 9 }))
+  t.notOk(await check.validate(store, { key: 7 }))
+  t.notOk(await check.validate(store, { key: [] }))
+  t.notOk(await check.validate(store, { key: 'foo' }))
+  t.notOk(await check.validate(store, { key: true }))
+  t.notOk(await check.validate(store, { foo: 42 }))
+  t.plan(8)
+  t.end()
+})
+
+test('Checks.Num.asInt', async function(t) {
+  let check = Checks.Num('key').asInt()
+    , store = new Store()
+
+  t.ok(await check.validate(store, { key: 42 }))
+  t.notOk(await check.validate(store, { key: 3.14159 }))
+  t.notOk(await check.validate(store, { key: 'foo' }))
+  t.notOk(await check.validate(store, { foo: 42 }))
+  t.plan(4)
+  t.end()
+})
+
+test('Checks.Num.min', async function(t) {
+  let check = Checks.Num('key').min(-1.5)
+    , store = new Store()
+
+  t.ok(await check.validate(store, { key: 42 }))
+  t.ok(await check.validate(store, { key: 0 }))
+  t.ok(await check.validate(store, { key: -1 }))
+  t.ok(await check.validate(store, { key: -1.5 }))
+  t.ok(await check.validate(store, { key: 3.14159 }))
+  t.ok(await check.validate(store, { key: 142e12 }))
+  t.notOk(await check.validate(store, { key: -1.6 }))
+  t.notOk(await check.validate(store, { key: -666 }))
+  t.notOk(await check.validate(store, { key: 'foo' }))
+  t.notOk(await check.validate(store, { foo: 42 }))
+  t.plan(10)
+  t.end()
+})
+
+test('Checks.Num.max', async function(t) {
+  let check = Checks.Num('key').max(42)
+    , store = new Store()
+
+  t.ok(await check.validate(store, { key: 42 }))
+  t.ok(await check.validate(store, { key: 17 }))
+  t.ok(await check.validate(store, { key: 0 }))
+  t.ok(await check.validate(store, { key: 3.14159 }))
+  t.ok(await check.validate(store, { key: -66 }))
+  t.notOk(await check.validate(store, { key: 42.1 }))
+  t.notOk(await check.validate(store, { key: 142 }))
+  t.notOk(await check.validate(store, { key: 142e12 }))
+  t.notOk(await check.validate(store, { key: 'foo' }))
+  t.notOk(await check.validate(store, { foo: 42 }))
+  t.plan(10)
+  t.end()
+})
+
+test('Checks.Num.asInt.min.max', async function(t) {
+  let check = Checks.Num('key').asInt().min(0).max(4.5)
+    , store = new Store()
+
+  t.ok(await check.validate(store, { key: 4 }))
+  t.ok(await check.validate(store, { key: 3 }))
+  t.ok(await check.validate(store, { key: 2 }))
+  t.ok(await check.validate(store, { key: 1 }))
+  t.ok(await check.validate(store, { key: 0 }))
+  t.notOk(await check.validate(store, { key: 42 }))
+  t.notOk(await check.validate(store, { key: 3.14159 }))
+  t.notOk(await check.validate(store, { key: 4.00001 }))
+  t.notOk(await check.validate(store, { key: 4+1e-15 }))
+  t.notOk(await check.validate(store, { key: 4.5 }))
+  t.notOk(await check.validate(store, { key: 'foo' }))
+  t.notOk(await check.validate(store, { foo: 42 }))
+  t.plan(12)
   t.end()
 })
 
@@ -325,14 +450,15 @@ test('Checks.Struct', async function(t) {
   t.end()
 })
 
-test('Checks.List', async function(t) {
-  let check = Checks.List(Checks.Str('key'))
+test('Checks.List Str.regex', async function(t) {
+  let check = Checks.List('key', Checks.Str().regex(/^[a-z]+$/))
     , store = new Store()
 
+  t.ok(await check.validate(store, { key: [ ] }))
   t.ok(await check.validate(store, { key: [ 'foo' ] }))
   t.ok(await check.validate(store, { key: [ 'foo', 'bar' ] }))
   t.ok(await check.validate(store, { key: [ 'another', 'foo', 'bar' ] }))
-  t.ok(await check.validate(store, { key: [ ] }))
+  t.notOk(await check.validate(store, { key: [ '##yo"' ] }))
   t.notOk(await check.validate(store, { key: [ 42 ] }))
   t.notOk(await check.validate(store, { key: [ 42, 666 ] }))
   t.notOk(await check.validate(store, { key: [ 42, 'plop' ] }))
@@ -340,6 +466,134 @@ test('Checks.List', async function(t) {
   t.notOk(await check.validate(store, { key: 42 }))
   t.notOk(await check.validate(store, { key: true }))
   t.notOk(await check.validate(store, { foo: 'bar' }))
-  t.plan(11)
+  t.plan(12)
+  t.end()
+})
+
+test('Checks.List Num', async function(t) {
+  let check = Checks.List('key', Checks.Num().asInt())
+    , store = new Store()
+
+  t.ok(await check.validate(store, { key: [ ] }))
+  t.ok(await check.validate(store, { key: [ 42 ] }))
+  t.ok(await check.validate(store, { key: [ 42, 666 ] }))
+  t.notOk(await check.validate(store, { key: [ 42, 666, 3.14159 ] }))
+  t.notOk(await check.validate(store, { key: [ 'foo' ] }))
+  t.notOk(await check.validate(store, { key: [ 'foo', 'bar' ] }))
+  t.notOk(await check.validate(store, { key: [ 'another', 'foo', 'bar' ] }))
+  t.notOk(await check.validate(store, { key: [ 42, 'plop' ] }))
+  t.notOk(await check.validate(store, { key: { int: 42, str: 666, rank: 'S'} }))
+  t.notOk(await check.validate(store, { key: 42 }))
+  t.notOk(await check.validate(store, { key: true }))
+  t.notOk(await check.validate(store, { foo: 'bar' }))
+  t.plan(12)
+  t.end()
+})
+
+test('Checks.Tuple Str Num', async function(t) {
+  let check = Checks.Tuple('key', [ Checks.Str().regex(/^[a-z]+$/), Checks.Num().asInt() ])
+    , store = new Store()
+
+  t.ok(await check.validate(store, { key: [ 'plop', 42 ] }))
+  t.ok(await check.validate(store, { key: [ 'bar', -1e10 ] }))
+  t.notOk(await check.validate(store, { key: [ 'foo', 3.14159 ] }))
+  t.notOk(await check.validate(store, { key: [ 'bar', -1e10, true ] }))
+  t.notOk(await check.validate(store, { key: [ ] }))
+  t.notOk(await check.validate(store, { key: [ 42 ] }))
+  t.notOk(await check.validate(store, { key: [ 42, 666, 3.14159 ] }))
+  t.notOk(await check.validate(store, { key: [ 'foo' ] }))
+  t.notOk(await check.validate(store, { key: [ 'foo', 'bar' ] }))
+  t.notOk(await check.validate(store, { key: [ 'another', 'foo', 'bar' ] }))
+  t.notOk(await check.validate(store, { key: { int: 42, str: 666, rank: 'S'} }))
+  t.notOk(await check.validate(store, { key: 42 }))
+  t.notOk(await check.validate(store, { key: true }))
+  t.notOk(await check.validate(store, { foo: 'bar' }))
+  t.plan(14)
+  t.end()
+})
+
+test('Checks.Tuple Str Num predicate', async function(t) {
+  let check = Checks.Tuple('key', [ Checks.Str().regex(/^[a-z]+$/), Checks.Num().asInt() ]).predicate(([a, b]) => a.length === b)
+    , store = new Store()
+
+  t.ok(await check.validate(store, { key: [ 'plop', 4 ] }))
+  t.ok(await check.validate(store, { key: [ 'bar', 3 ] }))
+  t.notOk(await check.validate(store, { key: [ 'foo', 0 ] }))
+  t.notOk(await check.validate(store, { key: [ 'foo', 3.14159 ] }))
+  t.notOk(await check.validate(store, { key: [ 'bar', -1e10, true ] }))
+  t.notOk(await check.validate(store, { key: [ ] }))
+  t.notOk(await check.validate(store, { key: [ 42 ] }))
+  t.notOk(await check.validate(store, { key: [ 42, 666, 3.14159 ] }))
+  t.notOk(await check.validate(store, { key: [ 'foo' ] }))
+  t.notOk(await check.validate(store, { key: [ 'foo', 'bar' ] }))
+  t.notOk(await check.validate(store, { key: [ 'another', 'foo', 'bar' ] }))
+  t.notOk(await check.validate(store, { key: { int: 42, str: 666, rank: 'S'} }))
+  t.notOk(await check.validate(store, { key: 42 }))
+  t.notOk(await check.validate(store, { key: true }))
+  t.notOk(await check.validate(store, { foo: 'bar' }))
+  t.plan(15)
+  t.end()
+})
+
+test('Checks.Tuple Enum Num Bool', async function(t) {
+  let check = Checks.Tuple('key', [ Checks.Enum('', ['foo', 'bar']), Checks.Num().min(0), Checks.Bool() ])
+    , store = new Store()
+
+  t.ok(await check.validate(store, { key: [ 'bar', 0, true ] }))
+  t.ok(await check.validate(store, { key: [ 'foo', 3.14159, false ] }))
+  t.notOk(await check.validate(store, { key: [ 'bar', -1e10, true ] }))
+  t.notOk(await check.validate(store, { key: [ 'plop', 42, false ] }))
+  t.notOk(await check.validate(store, { key: [ 'foo', 3.14159, undefined ] }))
+  t.notOk(await check.validate(store, { key: [ ] }))
+  t.notOk(await check.validate(store, { key: [ 42 ] }))
+  t.notOk(await check.validate(store, { key: [ 42, 666, 3.14159 ] }))
+  t.notOk(await check.validate(store, { key: [ 'foo' ] }))
+  t.notOk(await check.validate(store, { key: [ 'foo', 'bar' ] }))
+  t.notOk(await check.validate(store, { key: [ 'another', 'foo', 'bar' ] }))
+  t.notOk(await check.validate(store, { key: { int: 42, str: 666, rank: 'S'} }))
+  t.notOk(await check.validate(store, { key: 42 }))
+  t.notOk(await check.validate(store, { key: true }))
+  t.notOk(await check.validate(store, { foo: 'bar' }))
+  t.plan(15)
+  t.end()
+})
+
+test('Checks.Dict Str Num', async function(t) {
+  let check = Checks.Dict('key', Checks.Tuple('', [ Checks.Str().regex(/^[a-z]+$/), Checks.Num().asInt() ]))
+    , store = new Store()
+
+  t.ok(await check.validate(store, { key: { } }))
+  t.ok(await check.validate(store, { key: { foo: 12 } }))
+  t.ok(await check.validate(store, { key: { bar: 1654123 } }))
+  t.ok(await check.validate(store, { key: { foo: 42, bar: 666, plop: 1e10, another: 0, last: -12 } }))
+  t.notOk(await check.validate(store, { key: { foo: 42, bar: 666, plop: 1e10, another: 0, '$bad': -12 } }))
+  t.notOk(await check.validate(store, { key: { foo: 42, bar: 3.14159 } }))
+  t.notOk(await check.validate(store, { key: { foo: 'plop', bar: 3 } }))
+  t.notOk(await check.validate(store, { key: [ ] }))
+  t.notOk(await check.validate(store, { key: [ 'plop' ] }))
+  t.notOk(await check.validate(store, { key: 42 }))
+  t.notOk(await check.validate(store, { key: true }))
+  t.notOk(await check.validate(store, { foo: 'bar' }))
+  t.plan(12)
+  t.end()
+})
+
+test('Checks.Dict Enum Num', async function(t) {
+  let check = Checks.Dict('key', Checks.Tuple('', [ Checks.Enum('', ['foo', 'bar']), Checks.Num().min(0) ]))
+    , store = new Store()
+
+  t.ok(await check.validate(store, { key: { } }))
+  t.ok(await check.validate(store, { key: { foo: 12 } }))
+  t.ok(await check.validate(store, { key: { bar: 1.654123 } }))
+  t.ok(await check.validate(store, { key: { foo: 42, bar: 3.14159 } }))
+  t.notOk(await check.validate(store, { key: { foo: 42, bar: -1 } }))
+  t.notOk(await check.validate(store, { key: { foo: 'plop', bar: 3.14159 } }))
+  t.notOk(await check.validate(store, { key: { foo: 'plop', bar: -1 } }))
+  t.notOk(await check.validate(store, { key: [ ] }))
+  t.notOk(await check.validate(store, { key: [ 'plop' ] }))
+  t.notOk(await check.validate(store, { key: 42 }))
+  t.notOk(await check.validate(store, { key: true }))
+  t.notOk(await check.validate(store, { foo: 'bar' }))
+  t.plan(12)
   t.end()
 })

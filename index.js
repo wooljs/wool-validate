@@ -12,17 +12,19 @@
 const Checks = {}
 
 ;[
+  'InvalidRuleError',
   'ParamCheck',
   'StrCheck',
   'EnumCheck',
   'BoolCheck',
   'NumberCheck',
   'StructCheck',
-  'ListCheck',
   'ValidId',
   'MultiCheck',
   'NoCheck',
-  'InvalidRuleError',
+  'ListCheck',
+  'DictCheck',
+  'TupleCheck'
 ].forEach((k)=> {
   Checks[k] = require('./lib/'+k)
 })
@@ -35,8 +37,11 @@ Object.entries({
   Enum: 'EnumCheck',
   Struct: 'StructCheck',
   List: 'ListCheck',
+  Tuple: 'TupleCheck',
+  Dict: 'DictCheck',
   Multi: 'MultiCheck',
-  None: 'NoCheck'
+  None: 'NoCheck',
+  Any: 'NoCheck'
 }).forEach(([k,v])=>{
   Checks[k] = Checks[v].build
 })
