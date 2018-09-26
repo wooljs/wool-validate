@@ -15,7 +15,14 @@ const test = require('tape-async')
   , Checks = require(__dirname + '/../index.js')
   , { Store } = require('wool-store')
 
-// TODO ValidID, Crypto asymetric
+async function testAsyncException(t, r, m) {
+  await r
+  .then(()=> t.fail('should throw') )
+  .catch(e => {
+    t.ok(e instanceof Checks.InvalidRuleError)
+    t.deepEqual(e.toString(), m)
+  })
+}
 
 test('Checks.Multi Error on param, toDTO, keptParam, drop,...', async function(t) {
   t.throws(() => Checks.Multi([ 'plop' ]), /^InvalidRuleError/)
@@ -26,7 +33,7 @@ test('Checks.Multi Error on param, toDTO, keptParam, drop,...', async function(t
   ])
 
   t.deepEqual(check.toDTO(), {Numkey: true, strkey: true})
-  t.deepEqual(check.keptParam(), [{ k: 'Numkey', keep: true }, { k: 'strkey', keep: true }])
+  t.deepEqual(check.keptParam(), [{ k: 'Numkey', keep: true, presence: 1 }, { k: 'strkey', keep: true, presence: 1 }])
 
   check = Checks.Multi([
     Checks.Num('Numkey'),
@@ -34,7 +41,7 @@ test('Checks.Multi Error on param, toDTO, keptParam, drop,...', async function(t
   ])
 
   t.deepEqual(check.toDTO(), {Numkey: true, strkey: true})
-  t.deepEqual(check.keptParam(), [{ k: 'Numkey', keep: true }])
+  t.deepEqual(check.keptParam(), [{ k: 'Numkey', keep: true, presence: 1 }])
 
   check = Checks.Multi([
     Checks.Num('Numkey'),
@@ -42,7 +49,7 @@ test('Checks.Multi Error on param, toDTO, keptParam, drop,...', async function(t
   ])
 
   t.deepEqual(check.toDTO(), {Numkey: true, strkey: true})
-  t.deepEqual(check.keptParam(), [{ k: 'Numkey', keep: true }, { k: 'strkey', keep: true }])
+  t.deepEqual(check.keptParam(), [{ k: 'Numkey', keep: true, presence: 1 }, { k: 'strkey', keep: true, presence: 1 }])
 
   t.plan(7)
   t.end()
@@ -58,28 +65,36 @@ test('Checks.Multi', async function(t) {
   t.ok(await check.validate(store, { Numkey: 42, strkey: 'toto' }))
   t.ok(await check.validate(store, { Numkey: 42, strkey: 'toto', key: false }))
 
-  await check.validate(store, { })
-  .then(()=> t.fail('should throw') )
-  .catch(e => {
-    t.ok(e instanceof Checks.InvalidRuleError)
-    t.deepEqual(e.toString(),'InvalidRuleError: invalid result while processing NumberCheck[k:Numkey] for param {}')
-  })
+  await testAsyncException(t, check.validate(store, { }), 'InvalidRuleError: param.check.should.be.present(NumberCheck[k:Numkey])')
 
-  await check.validate(store, { Numkey: 42 })
-  .then(()=> t.fail('should throw') )
-  .catch(e => {
-    t.ok(e instanceof Checks.InvalidRuleError)
-    t.deepEqual(e.toString(), 'InvalidRuleError: invalid result while processing StrCheck[k:strkey] for param {"Numkey":42}')
-  })
+  await testAsyncException(t, check.validate(store, { Numkey: 42 }), 'InvalidRuleError: param.check.should.be.present(StrCheck[k:strkey])')
 
-  await check.validate(store, { strkey: 'toto' })
-  .then(()=> t.fail('should throw') )
-  .catch(e => {
-    t.ok(e instanceof Checks.InvalidRuleError)
-    t.deepEqual(e.toString(), 'InvalidRuleError: invalid result while processing NumberCheck[k:Numkey] for param {"strkey":"toto"}')
-  })
+  await testAsyncException(t, check.validate(store, { strkey: 'toto' }), 'InvalidRuleError: param.check.should.be.present(NumberCheck[k:Numkey])')
 
   t.plan(8)
+  t.end()
+})
+
+test('Checks.Multi optional', async function(t) {
+  let check = Checks.Multi([
+      Checks.Num('Numkey'),
+      Checks.Str('strkey'),
+      Checks.Str('foo').optional()
+    ])
+    , store = new Store()
+
+  t.ok(await check.validate(store, { Numkey: 42, strkey: 'toto' }))
+  t.ok(await check.validate(store, { Numkey: 42, strkey: 'toto', key: false }))
+
+  await testAsyncException(t, check.validate(store, { }), 'InvalidRuleError: param.check.should.be.present(NumberCheck[k:Numkey])')
+
+  await testAsyncException(t, check.validate(store, { Numkey: 42 }), 'InvalidRuleError: param.check.should.be.present(StrCheck[k:strkey])')
+
+  await testAsyncException(t, check.validate(store, { strkey: 'toto' }), 'InvalidRuleError: param.check.should.be.present(NumberCheck[k:Numkey])')
+
+  await testAsyncException(t, check.validate(store, { Numkey: 42, strkey: 'toto', foo: false }), 'InvalidRuleError: param.check.multi.invalid.for.param(StrCheck[k:foo], {"Numkey":42,"strkey":"toto","foo":false})')
+
+  t.plan(10)
   t.end()
 })
 
@@ -132,14 +147,14 @@ test('Checks.Id prefix', async function(t) {
   .then(()=> t.fail('should throw') )
   .catch(e => {
     t.ok(e instanceof Checks.InvalidRuleError)
-    t.deepEqual(e.toString(), 'InvalidRuleError: invalid id: 666 does not exist')
+    t.deepEqual(e.toString(), 'InvalidRuleError: param.check.should.exists.in.store(ValidId[k:id], 666)')
   })
 
   await check.validate(store, { foo: true })
   .then(()=> t.fail('should throw') )
   .catch(e => {
     t.ok(e instanceof Checks.InvalidRuleError)
-    t.deepEqual(e.toString(), 'InvalidRuleError: invalid id: undefined does not exist')
+    t.deepEqual(e.toString(), 'InvalidRuleError: param.check.should.be.present(ValidId[k:id])')
   })
 
   t.ok(check.isOne('test: 42'))
@@ -173,24 +188,24 @@ test('Checks.Id.asNew() algo', async function(t) {
   .then(()=> t.fail('should throw') )
   .catch(e => {
     t.ok(e instanceof Checks.InvalidRuleError)
-    t.deepEqual(e.toString(), 'InvalidRuleError: should not be in store id 42')
+    t.deepEqual(e.toString(), 'InvalidRuleError: param.check.should.not.be.in.store(NotExistsId[k:id], 42)')
   })
 
   await check.validate(store, { id: '42' })
   .then(()=> t.fail('should throw') )
   .catch(e => {
     t.ok(e instanceof Checks.InvalidRuleError)
-    t.deepEqual(e.toString(), 'InvalidRuleError: should not contain asNew param id')
+    t.deepEqual(e.toString(), 'InvalidRuleError: param.check.should.be.absent(NotExistsId[k:id])')
   })
 
   await check.validate(store, { id: '666' })
   .then(()=> t.fail('should throw') )
   .catch(e => {
     t.ok(e instanceof Checks.InvalidRuleError)
-    t.deepEqual(e.toString(), 'InvalidRuleError: should not contain asNew param id')
+    t.deepEqual(e.toString(), 'InvalidRuleError: param.check.should.be.absent(NotExistsId[k:id])')
   })
 
-  t.notOk(check.isMandatory())
+  t.equal(check.presence, Checks.ParamCheck.Presence.absent)
 
   t.plan(8)
   t.end()
@@ -203,8 +218,10 @@ test('Checks.Bool', async function(t) {
   t.ok(await check.validate(store, { key: true }))
   t.ok(await check.validate(store, { key: false }))
   t.notOk(await check.validate(store, { key: 'foo' }))
-  t.notOk(await check.validate(store, { foo: true }))
-  t.plan(4)
+
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(BoolCheck[k:key])')
+
+  t.plan(5)
   t.end()
 })
 
@@ -215,8 +232,10 @@ test('Checks.Num', async function(t) {
   t.ok(await check.validate(store, { key: 42 }))
   t.ok(await check.validate(store, { key: 3.14159 }))
   t.notOk(await check.validate(store, { key: 'foo' }))
-  t.notOk(await check.validate(store, { foo: 42 }))
-  t.plan(4)
+
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(NumberCheck[k:key])')
+
+  t.plan(5)
   t.end()
 })
 
@@ -231,8 +250,10 @@ test('Checks.Num.predicate', async function(t) {
   t.notOk(await check.validate(store, { key: [] }))
   t.notOk(await check.validate(store, { key: 'foo' }))
   t.notOk(await check.validate(store, { key: true }))
-  t.notOk(await check.validate(store, { foo: 42 }))
-  t.plan(8)
+
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(PredicateNumberCheck[k:key])')
+
+  t.plan(9)
   t.end()
 })
 
@@ -243,8 +264,10 @@ test('Checks.Num.asInt', async function(t) {
   t.ok(await check.validate(store, { key: 42 }))
   t.notOk(await check.validate(store, { key: 3.14159 }))
   t.notOk(await check.validate(store, { key: 'foo' }))
-  t.notOk(await check.validate(store, { foo: 42 }))
-  t.plan(4)
+
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(IntegerCheck[k:key])')
+
+  t.plan(5)
   t.end()
 })
 
@@ -261,8 +284,10 @@ test('Checks.Num.min', async function(t) {
   t.notOk(await check.validate(store, { key: -1.6 }))
   t.notOk(await check.validate(store, { key: -666 }))
   t.notOk(await check.validate(store, { key: 'foo' }))
-  t.notOk(await check.validate(store, { foo: 42 }))
-  t.plan(10)
+
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(MinCheck[k:key])')
+
+  t.plan(11)
   t.end()
 })
 
@@ -279,8 +304,10 @@ test('Checks.Num.max', async function(t) {
   t.notOk(await check.validate(store, { key: 142 }))
   t.notOk(await check.validate(store, { key: 142e12 }))
   t.notOk(await check.validate(store, { key: 'foo' }))
-  t.notOk(await check.validate(store, { foo: 42 }))
-  t.plan(10)
+
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(MaxCheck[k:key])')
+
+  t.plan(11)
   t.end()
 })
 
@@ -299,8 +326,10 @@ test('Checks.Num.asInt.min.max', async function(t) {
   t.notOk(await check.validate(store, { key: 4+1e-15 }))
   t.notOk(await check.validate(store, { key: 4.5 }))
   t.notOk(await check.validate(store, { key: 'foo' }))
-  t.notOk(await check.validate(store, { foo: 42 }))
-  t.plan(12)
+
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(MaxCheck[k:key])')
+
+  t.plan(13)
   t.end()
 })
 
@@ -310,8 +339,10 @@ test('Checks.Str', async function(t) {
 
   t.ok(await check.validate(store, { key: 'foo' }))
   t.notOk(await check.validate(store, { key: 42 }))
-  t.notOk(await check.validate(store, { foo: 'bar' }))
-  t.plan(3)
+
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(StrCheck[k:key])')
+
+  t.plan(4)
   t.end()
 })
 
@@ -345,8 +376,10 @@ test('Checks.Str.predicate', async function(t) {
   t.notOk(await check.validate(store, { key: 'bar' }))
   t.notOk(await check.validate(store, { key: 'another' }))
   t.notOk(await check.validate(store, { key: 42 }))
-  t.notOk(await check.validate(store, { foo: 'bar' }))
-  t.plan(5)
+
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(PredicateStrCheck[k:key])')
+
+  t.plan(6)
   t.end()
 })
 
@@ -362,8 +395,10 @@ test('Checks.Str.parse', async function(t) {
   t.deepEqual(p, { key: 'BAR' })
 
   t.notOk(await check.validate(store, { key: 42 }))
-  t.notOk(await check.validate(store, { foo: 'bar' }))
-  t.plan(6)
+
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(ParseStrCheck[k:key])')
+
+  t.plan(7)
   t.end()
 })
 
@@ -375,8 +410,8 @@ test('Checks.Str.regex', async function(t) {
   t.notOk(await check.validate(store, { key: 'bar' }))
   t.notOk(await check.validate(store, { key: 'another' }))
   t.notOk(await check.validate(store, { key: 42 }))
-  t.notOk(await check.validate(store, { foo: 'bar' }))
-  t.plan(5)
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(RegexCheck[k:key])')
+  t.plan(6)
   t.end()
 })
 
@@ -389,8 +424,10 @@ test('Checks.Str.regex.crypto', async function(t) {
   t.notOk(await check.validate(store, { key: 'bar' }))
   t.notOk(await check.validate(store, { key: 'another' }))
   t.notOk(await check.validate(store, { key: 42 }))
-  t.notOk(await check.validate(store, { foo: 'bar' }))
-  t.plan(6)
+
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(CryptoCheck[k:key])')
+
+  t.plan(7)
   t.end()
 })
 
@@ -410,14 +447,18 @@ test('Checks.Str.regex.crypto.check', async function(t) {
 
   t.ok(await check.validate(store, { userId: 'foo', key: 'FooBar42' }))
   t.ok(await check.validate(store, { userId: 'bar', key: 'xD5Ae8f4ysFG9luB' }))
-  t.notOk(await check.validate(store, { userId: 'foo' }))
-  t.notOk(await check.validate(store, { userId: 'bar' }))
+
+  await testAsyncException(t, check.validate(store, { userId: 'foo' }), 'InvalidRuleError: param.check.should.be.present(CryptoHashCheck[k:key])')
+  await testAsyncException(t, check.validate(store, { userId: 'bar' }), 'InvalidRuleError: param.check.should.be.present(CryptoHashCheck[k:key])')
+
   t.notOk(await check.validate(store, { userId: 'foo', key: 42 }))
   t.notOk(await check.validate(store, { userId: 'bar', key: 'another' }))
   t.notOk(await check.validate(store, { key: 'another' }))
   t.notOk(await check.validate(store, { key: 42 }))
-  t.notOk(await check.validate(store, { foo: 'bar' }))
-  t.plan(9)
+
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(CryptoHashCheck[k:key])')
+
+  t.plan(12)
   t.end()
 })
 
@@ -428,8 +469,10 @@ test('Checks.Enum', async function(t) {
   t.ok(await check.validate(store, { key: 'foo' }))
   t.ok(await check.validate(store, { key: 'another' }))
   t.notOk(await check.validate(store, { key: 42 }))
-  t.notOk(await check.validate(store, { foo: 'bar' }))
-  t.plan(4)
+
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(EnumCheck[k:key])')
+
+  t.plan(5)
   t.end()
 })
 
@@ -442,11 +485,28 @@ test('Checks.Struct', async function(t) {
   t.notOk(await check.validate(store, { key: { int: 42, str: 'plop', rank: 'K'} }))
   t.notOk(await check.validate(store, { key: { int: 42, str: 666, rank: 'S'} }))
   t.notOk(await check.validate(store, { key: { int: 'yo', str: 'plop', rank: 'S'} }))
-  t.notOk(await check.validate(store, { key: { str: 'plop', rank: 'S'} }))
+
+  await testAsyncException(t, check.validate(store, { key: { str: 'plop', rank: 'S'} }), 'InvalidRuleError: param.check.should.be.present(NumberCheck[k:key.int])')
+  
   t.notOk(await check.validate(store, { key: 42 }))
   t.notOk(await check.validate(store, { key: true }))
-  t.notOk(await check.validate(store, { foo: 'bar' }))
-  t.plan(9)
+
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(StructCheck[k:key])')
+
+  t.plan(11)
+  t.end()
+})
+
+test('Checks.Struct + Struct', async function(t) {
+  let check = Checks.Struct('key', [ Checks.Str('str'), Checks.Struct('sub', [ Checks.Num('int'), Checks.Enum('rank', [ 'S', 'A', 'B' ]) ]) ])
+    , store = new Store()
+
+  t.ok(await check.validate(store, { key: { str: 'plop', sub: { int: 42, rank: 'S'} } }))
+
+  await testAsyncException(t, check.validate(store, { key: { str: 'plop' } }), 'InvalidRuleError: param.check.should.be.present(StructCheck[k:key.sub])')
+  await testAsyncException(t, check.validate(store, { key: { str: 'plop', sub: { int: 42 } } }), 'InvalidRuleError: param.check.should.be.present(EnumCheck[k:key.sub.rank])')
+
+  t.plan(5)
   t.end()
 })
 
@@ -465,8 +525,10 @@ test('Checks.List Str.regex', async function(t) {
   t.notOk(await check.validate(store, { key: { int: 42, str: 666, rank: 'S'} }))
   t.notOk(await check.validate(store, { key: 42 }))
   t.notOk(await check.validate(store, { key: true }))
-  t.notOk(await check.validate(store, { foo: 'bar' }))
-  t.plan(12)
+
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(ListCheck[k:key])')
+
+  t.plan(13)
   t.end()
 })
 
@@ -485,8 +547,10 @@ test('Checks.List Num', async function(t) {
   t.notOk(await check.validate(store, { key: { int: 42, str: 666, rank: 'S'} }))
   t.notOk(await check.validate(store, { key: 42 }))
   t.notOk(await check.validate(store, { key: true }))
-  t.notOk(await check.validate(store, { foo: 'bar' }))
-  t.plan(12)
+
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(ListCheck[k:key])')
+
+  t.plan(13)
   t.end()
 })
 
@@ -507,8 +571,10 @@ test('Checks.Tuple Str Num', async function(t) {
   t.notOk(await check.validate(store, { key: { int: 42, str: 666, rank: 'S'} }))
   t.notOk(await check.validate(store, { key: 42 }))
   t.notOk(await check.validate(store, { key: true }))
-  t.notOk(await check.validate(store, { foo: 'bar' }))
-  t.plan(14)
+
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(TupleCheck[k:key])')
+
+  t.plan(15)
   t.end()
 })
 
@@ -530,8 +596,10 @@ test('Checks.Tuple Str Num predicate', async function(t) {
   t.notOk(await check.validate(store, { key: { int: 42, str: 666, rank: 'S'} }))
   t.notOk(await check.validate(store, { key: 42 }))
   t.notOk(await check.validate(store, { key: true }))
-  t.notOk(await check.validate(store, { foo: 'bar' }))
-  t.plan(15)
+
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(PredicateTupleCheck[k:key])')
+
+  t.plan(16)
   t.end()
 })
 
@@ -553,8 +621,10 @@ test('Checks.Tuple Enum Num Bool', async function(t) {
   t.notOk(await check.validate(store, { key: { int: 42, str: 666, rank: 'S'} }))
   t.notOk(await check.validate(store, { key: 42 }))
   t.notOk(await check.validate(store, { key: true }))
-  t.notOk(await check.validate(store, { foo: 'bar' }))
-  t.plan(15)
+
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(TupleCheck[k:key])')
+
+  t.plan(16)
   t.end()
 })
 
@@ -573,8 +643,8 @@ test('Checks.Dict Str Num', async function(t) {
   t.notOk(await check.validate(store, { key: [ 'plop' ] }))
   t.notOk(await check.validate(store, { key: 42 }))
   t.notOk(await check.validate(store, { key: true }))
-  t.notOk(await check.validate(store, { foo: 'bar' }))
-  t.plan(12)
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(DictCheck[k:key])')
+  t.plan(13)
   t.end()
 })
 
@@ -593,7 +663,7 @@ test('Checks.Dict Enum Num', async function(t) {
   t.notOk(await check.validate(store, { key: [ 'plop' ] }))
   t.notOk(await check.validate(store, { key: 42 }))
   t.notOk(await check.validate(store, { key: true }))
-  t.notOk(await check.validate(store, { foo: 'bar' }))
-  t.plan(12)
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(DictCheck[k:key])')
+  t.plan(13)
   t.end()
 })
