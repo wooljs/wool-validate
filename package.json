@@ -33,7 +33,7 @@
     "tap-summary": "^4.0.0",
     "tape": "^4.9.2",
     "tape-async": "^2.3.0",
-    "wool-store": "^1.2.5"
+    "wool-store": "^1.2.7"
   },
   "dependencies": {}
 }
