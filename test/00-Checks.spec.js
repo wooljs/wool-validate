@@ -636,6 +636,7 @@ test('Checks.Dict Str Num', async function(t) {
   t.ok(await check.validate(store, { key: { foo: 12 } }))
   t.ok(await check.validate(store, { key: { bar: 1654123 } }))
   t.ok(await check.validate(store, { key: { foo: 42, bar: 666, plop: 1e10, another: 0, last: -12 } }))
+  t.notOk(await check.validate(store, { key: { A1: 42 } }))
   t.notOk(await check.validate(store, { key: { foo: 42, bar: 666, plop: 1e10, another: 0, '$bad': -12 } }))
   t.notOk(await check.validate(store, { key: { foo: 42, bar: 3.14159 } }))
   t.notOk(await check.validate(store, { key: { foo: 'plop', bar: 3 } }))
@@ -644,7 +645,7 @@ test('Checks.Dict Str Num', async function(t) {
   t.notOk(await check.validate(store, { key: 42 }))
   t.notOk(await check.validate(store, { key: true }))
   await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.check.should.be.present(DictCheck[k:key])')
-  t.plan(13)
+  t.plan(14)
   t.end()
 })
 
