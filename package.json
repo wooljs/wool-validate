@@ -1,6 +1,6 @@
 {
   "name": "wool-validate",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "description": "Lib to validate data in Wool",
   "main": "index.js",
   "scripts": {
