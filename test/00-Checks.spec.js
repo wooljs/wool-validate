@@ -166,12 +166,14 @@ test('Checks.Id prefix', async function(t) {
 test('Checks.Id.asNew()', async function(t) {
   let check = Checks.Id('id', {prefix: 'test: '}).asNew()
     , store = new Store()
-    , p
+    , p, d
 
   t.ok(await check.validate(store, p = { foo: true }))
   t.ok('id' in p)
+  t.ok(await check.validate(store, p = { foo: true }), d = new Date())
+  t.ok('id' in p && p.id === d.getTime().toString(16))
   t.ok(/^test: /.test(check.as(p.id)))
-  t.plan(3)
+  t.plan(5)
   t.end()
 })
 
@@ -487,7 +489,7 @@ test('Checks.Struct', async function(t) {
   t.notOk(await check.validate(store, { key: { int: 'yo', str: 'plop', rank: 'S'} }))
 
   await testAsyncException(t, check.validate(store, { key: { str: 'plop', rank: 'S'} }), 'InvalidRuleError: param.check.should.be.present(NumberCheck[k:key.int])')
-  
+
   t.notOk(await check.validate(store, { key: 42 }))
   t.notOk(await check.validate(store, { key: true }))
 
