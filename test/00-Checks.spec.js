@@ -284,8 +284,8 @@ test('Checks.Num.min', async function(t) {
   t.ok('undefined' === typeof await check.validate(store, { key: -1.5 }))
   t.ok('undefined' === typeof await check.validate(store, { key: 3.14159 }))
   t.ok('undefined' === typeof await check.validate(store, { key: 142e12 }))
-  await testAsyncException(t, check.validate(store, { key: -1.6 }), 'InvalidRuleError: param.invalid.num.predicate(MinCheck[k:key], -1.6, x => x >= v)')
-  await testAsyncException(t, check.validate(store, { key: -666 }), 'InvalidRuleError: param.invalid.num.predicate(MinCheck[k:key], -666, x => x >= v)')
+  await testAsyncException(t, check.validate(store, { key: -1.6 }), 'InvalidRuleError: param.invalid.num.predicate(MinCheck[k:key], -1.6, x >= -1.5)')
+  await testAsyncException(t, check.validate(store, { key: -666 }), 'InvalidRuleError: param.invalid.num.predicate(MinCheck[k:key], -666, x >= -1.5)')
   await testAsyncException(t, check.validate(store, { key: 'foo' }), 'InvalidRuleError: param.invalid.num(NumberCheck[k:key], "foo")')
 
   await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.should.be.present(MinCheck[k:key])')
@@ -303,9 +303,9 @@ test('Checks.Num.max', async function(t) {
   t.ok('undefined' === typeof await check.validate(store, { key: 0 }))
   t.ok('undefined' === typeof await check.validate(store, { key: 3.14159 }))
   t.ok('undefined' === typeof await check.validate(store, { key: -66 }))
-  await testAsyncException(t, check.validate(store, { key: 42.1 }), 'InvalidRuleError: param.invalid.num.predicate(MaxCheck[k:key], 42.1, x => x <= v)')
-  await testAsyncException(t, check.validate(store, { key: 142 }), 'InvalidRuleError: param.invalid.num.predicate(MaxCheck[k:key], 142, x => x <= v)')
-  await testAsyncException(t, check.validate(store, { key: 142e12 }), 'InvalidRuleError: param.invalid.num.predicate(MaxCheck[k:key], 142000000000000, x => x <= v)')
+  await testAsyncException(t, check.validate(store, { key: 42.1 }), 'InvalidRuleError: param.invalid.num.predicate(MaxCheck[k:key], 42.1, x <= 42)')
+  await testAsyncException(t, check.validate(store, { key: 142 }), 'InvalidRuleError: param.invalid.num.predicate(MaxCheck[k:key], 142, x <= 42)')
+  await testAsyncException(t, check.validate(store, { key: 142e12 }), 'InvalidRuleError: param.invalid.num.predicate(MaxCheck[k:key], 142000000000000, x <= 42)')
   await testAsyncException(t, check.validate(store, { key: 'foo' }), 'InvalidRuleError: param.invalid.num(NumberCheck[k:key], "foo")')
 
   await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.should.be.present(MaxCheck[k:key])')
@@ -323,7 +323,7 @@ test('Checks.Num.asInt.min.max', async function(t) {
   t.ok('undefined' === typeof await check.validate(store, { key: 2 }))
   t.ok('undefined' === typeof await check.validate(store, { key: 1 }))
   t.ok('undefined' === typeof await check.validate(store, { key: 0 }))
-  await testAsyncException(t, check.validate(store, { key: 42 }), 'InvalidRuleError: param.invalid.num.predicate(MaxCheck[k:key], 42, x => x <= v)')
+  await testAsyncException(t, check.validate(store, { key: 42 }), 'InvalidRuleError: param.invalid.num.predicate(MaxCheck[k:key], 42, x <= 4.5)')
   await testAsyncException(t, check.validate(store, { key: 3.14159 }), 'InvalidRuleError: param.invalid.num.predicate(IntegerCheck[k:key], 3.14159, function isInteger() { [native code] })')
   await testAsyncException(t, check.validate(store, { key: 4.00001 }), 'InvalidRuleError: param.invalid.num.predicate(IntegerCheck[k:key], 4.00001, function isInteger() { [native code] })')
   await testAsyncException(t, check.validate(store, { key: 4+1e-15 }), 'InvalidRuleError: param.invalid.num.predicate(IntegerCheck[k:key], 4.000000000000001, function isInteger() { [native code] })')
@@ -562,6 +562,23 @@ test('Checks.List Num', async function(t) {
   t.end()
 })
 
+test('Checks.List Num predicate', async function(t) {
+  let check = Checks.List('key', Checks.Num().asInt()).predicate(l => l.reduce((a,b)=>(a+b),0) < 10)
+    , store = new Store()
+
+  t.ok('undefined' === typeof await check.validate(store, { key: [ 9 ] }))
+  t.ok('undefined' === typeof await check.validate(store, { key: [ 1, 2, 3 ] }))
+  t.ok('undefined' === typeof await check.validate(store, { key: [ 4, 4 ] }))
+  t.ok('undefined' === typeof await check.validate(store, { key: [ 1, 1, 1, 1, 1, 1, 1, 1, 1 ] }))
+
+  await testAsyncException(t, check.validate(store, { key: [ 42, 666, 3.14159 ] }), 'InvalidRuleError: param.invalid.list.item.at(ListCheck[k:key], 2, param.invalid.num.predicate(3.14159, function isInteger() { [native code] }))')
+  await testAsyncException(t, check.validate(store, { key: [ 42 ] }), 'InvalidRuleError: param.invalid.list.predicate(PredicateListCheck[k:key], [42], l => l.reduce((a,b)=>(a+b),0) < 10)')
+
+  t.plan(8)
+  t.end()
+})
+
+
 test('Checks.Tuple Str Num', async function(t) {
   let check = Checks.Tuple('key', [ Checks.Str().regex(/^[a-z]+$/), Checks.Num().asInt() ])
     , store = new Store()
@@ -617,7 +634,7 @@ test('Checks.Tuple Enum Num Bool', async function(t) {
 
   t.ok('undefined' === typeof await check.validate(store, { key: [ 'bar', 0, true ] }))
   t.ok('undefined' === typeof await check.validate(store, { key: [ 'foo', 3.14159, false ] }))
-  await testAsyncException(t, check.validate(store, { key: [ 'bar', -1e10, true ] }), 'InvalidRuleError: param.invalid.tuple.item.at(TupleCheck[k:key], 1, param.invalid.num.predicate(-10000000000, x => x >= v))')
+  await testAsyncException(t, check.validate(store, { key: [ 'bar', -1e10, true ] }), 'InvalidRuleError: param.invalid.tuple.item.at(TupleCheck[k:key], 1, param.invalid.num.predicate(-10000000000, x >= 0))')
   await testAsyncException(t, check.validate(store, { key: [ 'bar', -1e10, true, undefined ] }), 'InvalidRuleError: param.invalid.tuple.wrong.length.expected.actual(TupleCheck[k:key], 3, 4, ["bar",-10000000000,true,null])')
   await testAsyncException(t, check.validate(store, { key: [ 'plop', 42, false ] }), 'InvalidRuleError: param.invalid.tuple.item.at(TupleCheck[k:key], 0, param.invalid.enum("plop"))')
   await testAsyncException(t, check.validate(store, { key: [ 'foo', 3.14159, undefined ] }), 'InvalidRuleError: param.invalid.tuple.item.at(TupleCheck[k:key], 2, param.invalid.bool())')
@@ -666,7 +683,7 @@ test('Checks.Dict Enum Num', async function(t) {
   t.ok('undefined' === typeof await check.validate(store, { key: { foo: 12 } }))
   t.ok('undefined' === typeof await check.validate(store, { key: { bar: 1.654123 } }))
   t.ok('undefined' === typeof await check.validate(store, { key: { foo: 42, bar: 3.14159 } }))
-  await testAsyncException(t, check.validate(store, { key: { foo: 42, bar: -1 } }), 'InvalidRuleError: param.invalid.dict.val(DictCheck[k:key], param.invalid.num.predicate(-1, x => x >= v))')
+  await testAsyncException(t, check.validate(store, { key: { foo: 42, bar: -1 } }), 'InvalidRuleError: param.invalid.dict.val(DictCheck[k:key], param.invalid.num.predicate(-1, x >= 0))')
   await testAsyncException(t, check.validate(store, { key: { foobar: 'plop', bar: 3.14159 } }), 'InvalidRuleError: param.invalid.dict.key(DictCheck[k:key], param.invalid.enum("foobar"))')
   await testAsyncException(t, check.validate(store, { key: { foo: 'plop', bar: -1 } }), 'InvalidRuleError: param.invalid.dict.val(DictCheck[k:key], param.invalid.num("plop"))')
   await testAsyncException(t, check.validate(store, { key: [ ] }), 'InvalidRuleError: param.invalid.dict(DictCheck[k:key], [])')
