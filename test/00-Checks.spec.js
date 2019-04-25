@@ -167,14 +167,18 @@ test('Checks.Id prefix', async function(t) {
 test('Checks.Id.asNew()', async function(t) {
   let check = Checks.Id('id', {prefix: 'test: '}).asNew()
     , store = new Store()
-    , p, d
+    , p, d = new Date()
 
+  t.ok('undefined' === typeof await check.validate(store, p = { foo: true }, d))
+  t.ok('id' in p)
+  t.deepEqual(p.id, '0'+ d.getTime().toString(16)+'0000')
+  t.ok('undefined' === typeof await check.validate(store, p = { foo: true }, d))
+  t.ok('id' in p)
+  t.deepEqual(p.id, '0'+ d.getTime().toString(16)+'0001')
   t.ok('undefined' === typeof await check.validate(store, p = { foo: true }))
   t.ok('id' in p)
-  t.ok('undefined' === typeof await check.validate(store, p = { foo: true }), d = new Date())
-  t.ok('id' in p && p.id === d.getTime().toString(16))
   t.ok(/^test: /.test(check.as(p.id)))
-  t.plan(5)
+  t.plan(9)
   t.end()
 })
 
