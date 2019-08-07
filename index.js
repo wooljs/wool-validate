@@ -41,7 +41,8 @@ Object.entries({
   Dict: 'DictCheck',
   Multi: 'MultiCheck',
   None: 'NoCheck',
-  Any: 'NoCheck'
+  Any: 'NoCheck',
+  Has: 'ParamCheck'
 }).forEach(([k,v])=>{
   Checks[k] = Checks[v].build
 })
