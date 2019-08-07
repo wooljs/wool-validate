@@ -70,7 +70,7 @@ test('Checks.Multi Error on param, toDTO, keptParam, drop,...', async function(t
 
   check = Checks.Multi([])
   t.deepEqual(check.toDTO(), {})
-  
+
   check = Checks.Multi([
     Checks.Num('Numkey'),
     Checks.Str('strkey')
@@ -152,7 +152,7 @@ test('Checks.Has', async function(t) {
   t.ok('undefined' === typeof await check.validate(store, { key: false }))
   t.ok('undefined' === typeof await check.validate(store, { key: 'foo' }))
   t.ok('undefined' === typeof await check.validate(store, { key: true, bar: 42, foo: 'bar' }))
-  
+
   await testAsyncException(t, check.validate(store, { }), 'InvalidRuleError: param.should.be.present(ParamCheck[k:key])')
   await testAsyncException(t, check.validate(store, { foo: 42 }), 'InvalidRuleError: param.should.be.present(ParamCheck[k:key])')
   await testAsyncException(t, check.validate(store, { bar: true, foo: 'bar'}), 'InvalidRuleError: param.should.be.present(ParamCheck[k:key])')
@@ -630,17 +630,20 @@ test('Checks.Struct', async function(t) {
 })
 
 test('Checks.Struct + Struct', async function(t) {
-  let check = Checks.Struct('key', [ Checks.Str('str'), Checks.Struct('sub', [ Checks.Num('int'), Checks.Enum('rank', [ 'S', 'A', 'B' ]) ]) ])
+  let check = Checks.Struct('key', [ Checks.Str('str'), Checks.Struct('sub', [ Checks.Num('int').asInt()
+    .transform(x => { let r = Math.sqrt(x); if (isNaN(r)) { throw new Error('NaN') } else return r }), Checks.Enum('rank', [ 'S', 'A', 'B' ]) ]) ])
     , store = new Store()
 
   t.ok('undefined' === typeof await check.validate(store, { key: { str: 'plop', sub: { int: 42, rank: 'S'} } }))
+
+  await testAsyncException(t, check.validate(store, { key: { str: 'plop', sub: { int: -1, rank: 'S'} } }), 'Error: NaN', false)
 
   await testAsyncException(t, check.validate(store, { key: { str: 'plop', sub: { int: 16, rank: 10} } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.invalid.struct.item(StructCheck[k:sub], param.invalid.enum(EnumCheck[k:rank], 10)))')
 
   await testAsyncException(t, check.validate(store, { key: { str: 'plop' } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.should.be.present(StructCheck[k:sub]))')
   await testAsyncException(t, check.validate(store, { key: { str: 'plop', sub: { int: 42 } } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.invalid.struct.item(StructCheck[k:sub], param.should.be.present(EnumCheck[k:rank])))')
 
-  t.plan(7)
+  t.plan(8)
   t.end()
 })
 
@@ -692,8 +695,8 @@ test('Checks.List Num', async function(t) {
 })
 
 test('Checks.List Num predicate', async function(t) {
-  let check = Checks.List('key', Checks.Num().asInt().predicate(x => { 
-      if (x === 0) { throw new Error('zero')}; return x })).predicate(l => l.reduce((a,b)=>(a+b),0) < 10)
+  let check = Checks.List('key', Checks.Num().asInt().predicate(x => {
+      if (x === 0) { throw new Error('zero')} return x })).predicate(l => l.reduce((a,b)=>(a+b),0) < 10)
     , store = new Store()
 
   t.ok('undefined' === typeof await check.validate(store, { key: [ 9 ] }))
@@ -736,11 +739,12 @@ test('Checks.Tuple Str Num', async function(t) {
 })
 
 test('Checks.Tuple Str Num predicate', async function(t) {
-  let check = Checks.Tuple('key', [ Checks.Str().regex(/^[a-z]+$/), Checks.Num().asInt() ]).predicate(([a, b]) => a.length === b)
+  let check = Checks.Tuple('key', [ Checks.Str().regex(/^[a-z]+$/), Checks.Num().asInt().transform(x => { let r = Math.sqrt(x); if (isNaN(r)) { throw new Error('NaN') } else return r }) ]).predicate(([a, b]) => a.length === b)
     , store = new Store()
 
   t.ok('undefined' === typeof await check.validate(store, { key: [ 'plop', 4 ] }))
   t.ok('undefined' === typeof await check.validate(store, { key: [ 'bar', 3 ] }))
+  await testAsyncException(t, check.validate(store, { key: [ 'foo', -1 ] }), 'Error: NaN', false)
   await testAsyncException(t, check.validate(store, { key: [ 'foo', 0 ] }), 'InvalidRuleError: param.invalid.predicate(TupleCheck[k:key], ["foo",0], ([a, b]) => a.length === b)')
   await testAsyncException(t, check.validate(store, { key: [ 'foo', 3.14159 ] }), 'InvalidRuleError: param.invalid.tuple.item.at(TupleCheck[k:key], 1, param.invalid.predicate(NumberCheck[], 3.14159, function isInteger() { [native code] }))')
   await testAsyncException(t, check.validate(store, { key: [ 'bar', -1e10, true ] }), 'InvalidRuleError: param.invalid.tuple.wrong.length.expected.actual(TupleCheck[k:key], 2, 3, ["bar",-10000000000,true])')
@@ -756,7 +760,7 @@ test('Checks.Tuple Str Num predicate', async function(t) {
 
   await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.should.be.present(TupleCheck[k:key])')
 
-  t.plan(28)
+  t.plan(29)
   t.end()
 })
 
@@ -810,7 +814,7 @@ test('Checks.Dict Str Num', async function(t) {
 test('Checks.Dict Enum Num', async function(t) {
   let check = Checks.Dict('key',
       Checks.Enum(['foo', 'bar'])
-      .transform(async (x, store) => { if (await store.get(x) === 666) { throw new Error('! 666 !') } ; return x } ),
+      .transform(async (x, store) => { if (await store.get(x) === 666) { throw new Error('! 666 !') } return x } ),
       Checks.Num()
       .transform(x => { let r = Math.sqrt(x); if (isNaN(r)) { throw new Error('NaN') } else return r })
       .min(1)
