@@ -24,7 +24,8 @@ const Checks = {}
   'NoCheck',
   'ListCheck',
   'DictCheck',
-  'TupleCheck'
+  'TupleCheck',
+  'EitherCheck'
 ].forEach((k)=> {
   Checks[k] = require('./lib/'+k)
 })
@@ -42,7 +43,8 @@ Object.entries({
   Multi: 'MultiCheck',
   None: 'NoCheck',
   Any: 'NoCheck',
-  Has: 'ParamCheck'
+  Has: 'ParamCheck',
+  Either: 'EitherCheck'
 }).forEach(([k,v])=>{
   Checks[k] = Checks[v].build
 })
