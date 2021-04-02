@@ -33,6 +33,5 @@
     "tape": "^5.0.1",
     "tape-async": "^2.3.0",
     "wool-store": "^1.2.13"
-  },
-  "dependencies": {}
+  }
 }
