@@ -32,6 +32,6 @@
     "tap-spec-emoji": "^6.1.2",
     "tape": "^5.0.1",
     "tape-async": "^2.3.0",
-    "wool-store": "^1.2.13"
+    "wool-store": "^2.2.0"
   }
 }
