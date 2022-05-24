@@ -53,10 +53,10 @@ test('Checks.Dict Enum Num', async function(t) {
   t.ok('undefined' === typeof await check.validate(store, { key: { foo: 42, bar: 3.14159 } }))
 
   await store.set('foo', 666)
-  await testAsyncException(t, check.validate(store, { key: { foo: 666 } }), 'Error: ! 666 !', false)
+  await testAsyncException(t, check.validate(store, { key: { foo: 666 } }), /^InvalidRuleError: param\.validation\.error\(DictCheck\[k:key\], ! 666 !, Error: ! 666 !/, false)
   await store.del('foo')
 
-  await testAsyncException(t, check.validate(store, { key: { foo: 42, bar: -1 } }), 'Error: NaN', false)
+  await testAsyncException(t, check.validate(store, { key: { foo: 42, bar: -1 } }), /^InvalidRuleError: param\.validation\.error\(DictCheck\[k:key\], NaN, Error: NaN/, false)
 
   await testAsyncException(t, check.validate(store, { key: { foo: 42, bar: 0 } }), 'InvalidRuleError: param.invalid.dict.val(DictCheck[k:key], param.invalid.predicate(NumberCheck[], 0, x >= 1))')
   await testAsyncException(t, check.validate(store, { key: { foobar: 'plop', bar: 3.14159 } }), 'InvalidRuleError: param.invalid.dict.key(DictCheck[k:key], param.invalid.enum("foobar"))')

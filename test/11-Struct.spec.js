@@ -46,7 +46,7 @@ test('Checks.Struct + Struct', async function (t) {
 
   t.ok('undefined' === typeof await check.validate(store, { key: { str: 'plop', sub: { int: 42, rank: 'S' } } }))
 
-  await testAsyncException(t, check.validate(store, { key: { str: 'plop', sub: { int: -1, rank: 'S' } } }), 'Error: NaN', false)
+  await testAsyncException(t, check.validate(store, { key: { str: 'plop', sub: { int: -1, rank: 'S' } } }), /^InvalidRuleError: param\.invalid\.struct\.item\(StructCheck\[k:key\], param\.invalid\.struct\.item\(StructCheck\[k:sub\], param\.validation\.error\(\[k:int\], NaN, Error: NaN/, false)
 
   await testAsyncException(t, check.validate(store, { key: { str: 'plop', sub: { int: 16, rank: 10 } } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.invalid.struct.item(StructCheck[k:sub], param.invalid.enum(EnumCheck[k:rank], 10)))')
 

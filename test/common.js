@@ -14,14 +14,15 @@
 const Checks = require(__dirname + '/../index.js')
 
 module.exports = {
-  async testAsyncException(t, r, m, IRE=true) {
+  async testAsyncException(t, r, m, IRE = true) {
     let s = new Error().stack
     try {
       await r
-      t.fail('should throw: '+m)
-    } catch(e) {
+      t.fail('should throw: ' + m)
+    } catch (e) {
       if (IRE) t.ok(e instanceof Checks.InvalidRuleError)
-      t.deepEqual(e.toString(), m, s)
+      if (m instanceof RegExp) t.ok(m.test(e.toString()), s)
+      else t.deepEqual(e.toString(), m, s)
     }
   }
 }

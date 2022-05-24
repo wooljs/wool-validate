@@ -73,7 +73,7 @@ test('Checks.List Num predicate', async function(t) {
   t.ok('undefined' === typeof await check.validate(store, { key: [ 4, 4 ] }))
   t.ok('undefined' === typeof await check.validate(store, { key: [ 1, 1, 1, 1, 1, 1, 1, 1, 1 ] }))
 
-  await testAsyncException(t, check.validate(store, { key: [ 0 ] }), 'Error: zero', false)
+  await testAsyncException(t, check.validate(store, { key: [ 0 ] }), /^InvalidRuleError: param\.validation\.error\(ListCheck\[k:key\], zero, Error: zero/, false)
 
   await testAsyncException(t, check.validate(store, { key: [ 42, 666, 3.14159 ] }), 'InvalidRuleError: param.invalid.list.item.at(ListCheck[k:key], 2, param.invalid.predicate(NumberCheck[], 3.14159, function isInteger() { [native code] }))')
   await testAsyncException(t, check.validate(store, { key: [ 42 ] }), 'InvalidRuleError: param.invalid.predicate(ListCheck[k:key], [42], l => l.reduce((a,b)=>(a+b),0) < 10)')
