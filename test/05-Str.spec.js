@@ -16,9 +16,9 @@ const test = require('tape-async')
   , { Store } = require('wool-store')
   , { testAsyncException } = require('./common.js')
 
-test('Checks.Str', async function(t) {
-  let check = Checks.Str('key')
-    , store = new Store()
+test('Checks.Str', async function (t) {
+  const store = new Store()
+    , check = Checks.Str('key')
 
   t.ok('undefined' === typeof await check.validate(store, { key: 'foo' }))
   await testAsyncException(t, check.validate(store, { key: 42 }), 'InvalidRuleError: param.invalid.str(StrCheck[k:key], 42)')
@@ -29,25 +29,25 @@ test('Checks.Str', async function(t) {
   t.end()
 })
 
-test('Checks.Str.asDate', async function(t) {
-  let check = Checks.Str('key').asDate()
-    , store = new Store()
-    , p
+test('Checks.Str.asDate', async function (t) {
+  const store = new Store()
+    , check = Checks.Str('key').asDate()
+  let p
 
   t.ok('undefined' === typeof await check.validate(store, p = { key: '2018-05-19' }))
-  t.deepEqual(p, { key: new Date(1526688000000)})
+  t.deepEqual(p, { key: new Date(1526688000000) })
 
   t.ok('undefined' === typeof await check.validate(store, p = { key: '2018-05-19T06' }))
-  t.deepEqual(p, { key: new Date(1526709600000)})
+  t.deepEqual(p, { key: new Date(1526709600000) })
 
   t.ok('undefined' === typeof await check.validate(store, p = { key: '2018-05-19T06:04' }))
-  t.deepEqual(p, { key: new Date(1526709840000)})
+  t.deepEqual(p, { key: new Date(1526709840000) })
 
   t.ok('undefined' === typeof await check.validate(store, p = { key: '2018-05-19T06:04:29' }))
-  t.deepEqual(p, { key: new Date(1526709869000)})
+  t.deepEqual(p, { key: new Date(1526709869000) })
 
   t.ok('undefined' === typeof await check.validate(store, p = { key: '2018-05-19T06:04:29.945Z' }))
-  t.deepEqual(p, { key: new Date(1526709869945)})
+  t.deepEqual(p, { key: new Date(1526709869945) })
 
   await testAsyncException(t, check.validate(store, { key: 1526688000000 }), 'InvalidRuleError: param.invalid.str(StrCheck[k:key], 1526688000000)') // we check it is a string so this is invalid
   await testAsyncException(t, check.validate(store, { key: '1526709869945' }), 'InvalidRuleError: param.invalid.predicate(StrCheck[k:key], "1526709869945", isISODate())')
@@ -57,9 +57,9 @@ test('Checks.Str.asDate', async function(t) {
   t.end()
 })
 
-test('Checks.Str.predicate', async function(t) {
-  let check = Checks.Str('key').predicate(s => s.indexOf('f') === 0 )
-    , store = new Store()
+test('Checks.Str.predicate', async function (t) {
+  const store = new Store()
+    , check = Checks.Str('key').predicate(s => s.indexOf('f') === 0)
 
   t.ok('undefined' === typeof await check.validate(store, { key: 'foo' }))
   await testAsyncException(t, check.validate(store, { key: 'bar' }), 'InvalidRuleError: param.invalid.predicate(StrCheck[k:key], "bar", s => s.indexOf(\'f\') === 0)')
@@ -72,10 +72,10 @@ test('Checks.Str.predicate', async function(t) {
   t.end()
 })
 
-test('Checks.Str.transform', async function(t) {
-  let check = Checks.Str('key').transform(s => s.trim()).transform(s => s.toUpperCase()).regex(/^[A-Z]+$/)
-    , store = new Store()
-    , p
+test('Checks.Str.transform', async function (t) {
+  const store = new Store()
+    , check = Checks.Str('key').transform(s => s.trim()).transform(s => s.toUpperCase()).regex(/^[A-Z]+$/)
+  let p
 
   t.ok('undefined' === typeof await check.validate(store, p = { key: 'foo' }))
   t.deepEqual(p, { key: 'FOO' })
@@ -102,9 +102,9 @@ test('Checks.Str.transform', async function(t) {
   t.end()
 })
 
-test('Checks.Str.regex', async function(t) {
-  let check = Checks.Str('key').regex(/^f/)
-    , store = new Store()
+test('Checks.Str.regex', async function (t) {
+  const store = new Store()
+    , check = Checks.Str('key').regex(/^f/)
 
   t.ok('undefined' === typeof await check.validate(store, { key: 'foo' }))
   await testAsyncException(t, check.validate(store, { key: 'bar' }), 'InvalidRuleError: param.invalid.predicate(StrCheck[k:key], "bar", /^f/)')
@@ -115,9 +115,9 @@ test('Checks.Str.regex', async function(t) {
   t.end()
 })
 
-test('Checks.Str.regex.crypto', async function(t) {
-  let check = Checks.Str('key').regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{8,}$/).crypto(x => x)
-    , store = new Store()
+test('Checks.Str.regex.crypto', async function (t) {
+  const store = new Store()
+    , check = Checks.Str('key').regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{8,}$/).crypto(x => x)
 
   t.ok('undefined' === typeof await check.validate(store, { key: 'FooBar42' }))
   t.ok('undefined' === typeof await check.validate(store, { key: 'xD5Ae8f4ysFG9luB' }))
@@ -131,9 +131,9 @@ test('Checks.Str.regex.crypto', async function(t) {
   t.end()
 })
 
-test('Checks.Str.regex.crypto(hash,match)', async function(t) {
-  let check = Checks.Str('key').regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{8,}$/).crypto({hash: (x => x), match: (x => x) })
-    , store = new Store()
+test('Checks.Str.regex.crypto(hash,match)', async function (t) {
+  const store = new Store()
+    , check = Checks.Str('key').regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{8,}$/).crypto({ hash: (x => x), match: (x => x) })
 
   t.ok('undefined' === typeof await check.validate(store, { key: 'FooBar42' }))
   t.ok('undefined' === typeof await check.validate(store, { key: 'xD5Ae8f4ysFG9luB' }))
@@ -147,16 +147,16 @@ test('Checks.Str.regex.crypto(hash,match)', async function(t) {
   t.end()
 })
 
-test('Checks.Str.regex.crypto.check', async function(t) {
-  let check = Checks.Str('key')
-    .regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{8,}$/)
-    .crypto(x => x)
-    .check(async (store, param) => {
-      let { userId } = param
-        , user = await store.get(userId)
-      if (user) return user.password
-    })
-    , store = new Store()
+test('Checks.Str.regex.crypto.check', async function (t) {
+  const store = new Store()
+    , check = Checks.Str('key')
+      .regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{8,}$/)
+      .crypto(x => x)
+      .check(async (store, param) => {
+        let { userId } = param
+          , user = await store.get(userId)
+        if (user) return user.password
+      })
 
   store.set('foo', { password: 'FooBar42' })
   store.set('bar', { password: 'xD5Ae8f4ysFG9luB' })

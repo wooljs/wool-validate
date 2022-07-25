@@ -14,40 +14,40 @@
 const test = require('tape-async')
   , Checks = require(__dirname + '/../index.js')
   , { Store } = require('wool-store')
-  //, { testAsyncException } = require('./common.js')
+//, { testAsyncException } = require('./common.js')
 
-test('Checks.Id', async function(t) {
+test('Checks.Id', async function (t) {
   let check = Checks.Id('id')
     , store = new Store()
 
-  await store.set('42', {id: '42', foo: 'bar'})
-  t.ok('undefined' === typeof await check.validate(store, {id: '42', foo: true }))
+  await store.set('42', { id: '42', foo: 'bar' })
+  t.ok('undefined' === typeof await check.validate(store, { id: '42', foo: true }))
   t.ok(check.isOne('42'))
 
   t.plan(2)
   t.end()
 })
 
-test('Checks.Id prefix', async function(t) {
-  let check = Checks.Id('id', {prefix: 'test: '})
+test('Checks.Id prefix', async function (t) {
+  let check = Checks.Id('id', { prefix: 'test: ' })
     , store = new Store()
-  await store.set('test: 42', {id: '42', foo: 'bar'})
+  await store.set('test: 42', { id: '42', foo: 'bar' })
 
   t.ok('undefined' === typeof await check.validate(store, { id: '42' }))
 
   await check.validate(store, { id: '666' })
-  .then(()=> t.fail('should throw') )
-  .catch(e => {
-    t.ok(e instanceof Checks.InvalidRuleError)
-    t.deepEqual(e.toString(), 'InvalidRuleError: param.should.exists.in.store(ValidId[k:id], 666)')
-  })
+    .then(() => t.fail('should throw'))
+    .catch(e => {
+      t.ok(e instanceof Checks.InvalidRuleError)
+      t.deepEqual(e.toString(), 'InvalidRuleError: param.should.exists.in.store(ValidId[k:id], 666)')
+    })
 
   await check.validate(store, { foo: true })
-  .then(()=> t.fail('should throw') )
-  .catch(e => {
-    t.ok(e instanceof Checks.InvalidRuleError)
-    t.deepEqual(e.toString(), 'InvalidRuleError: param.should.be.present(ValidId[k:id])')
-  })
+    .then(() => t.fail('should throw'))
+    .catch(e => {
+      t.ok(e instanceof Checks.InvalidRuleError)
+      t.deepEqual(e.toString(), 'InvalidRuleError: param.should.be.present(ValidId[k:id])')
+    })
 
   t.ok(check.isOne('test: 42'))
 
@@ -58,17 +58,17 @@ test('Checks.Id prefix', async function(t) {
   t.end()
 })
 
-test('Checks.Id.asNew()', async function(t) {
-  let check = Checks.Id('id', {prefix: 'test: '}).asNew()
+test('Checks.Id.asNew()', async function (t) {
+  let check = Checks.Id('id', { prefix: 'test: ' }).asNew()
     , store = new Store()
     , p, d = new Date()
 
   t.ok('undefined' === typeof await check.validate(store, p = { foo: true }, d))
   t.ok('id' in p)
-  t.deepEqual(p.id, '0'+ d.getTime().toString(16)+'0000')
+  t.deepEqual(p.id, '0' + d.getTime().toString(16) + '0000')
   t.ok('undefined' === typeof await check.validate(store, p = { foo: true }, d))
   t.ok('id' in p)
-  t.deepEqual(p.id, '0'+ d.getTime().toString(16)+'0001')
+  t.deepEqual(p.id, '0' + d.getTime().toString(16) + '0001')
   t.ok('undefined' === typeof await check.validate(store, p = { foo: true }))
   t.ok('id' in p)
   t.ok(/^test: /.test(check.as(p.id)))
@@ -76,35 +76,35 @@ test('Checks.Id.asNew()', async function(t) {
   t.end()
 })
 
-test('Checks.Id.asNew() algo', async function(t) {
+test('Checks.Id.asNew() algo', async function (t) {
   let algo = () => '42'
-    , check = Checks.Id('id', {prefix: 'test: ', algo}).asNew()
+    , check = Checks.Id('id', { prefix: 'test: ', algo }).asNew()
     , store = new Store()
 
   t.ok('undefined' === typeof await check.validate(store, { foo: true }))
 
-  await store.set('test: 42', {id: '42', foo: 'bar'})
+  await store.set('test: 42', { id: '42', foo: 'bar' })
 
   await check.validate(store, { foo: true })
-  .then(()=> t.fail('should throw') )
-  .catch(e => {
-    t.ok(e instanceof Checks.InvalidRuleError)
-    t.deepEqual(e.toString(), 'InvalidRuleError: param.should.not.be.in.store(NotExistsId[k:id], 42)')
-  })
+    .then(() => t.fail('should throw'))
+    .catch(e => {
+      t.ok(e instanceof Checks.InvalidRuleError)
+      t.deepEqual(e.toString(), 'InvalidRuleError: param.should.not.be.in.store(NotExistsId[k:id], 42)')
+    })
 
   await check.validate(store, { id: '42' })
-  .then(()=> t.fail('should throw') )
-  .catch(e => {
-    t.ok(e instanceof Checks.InvalidRuleError)
-    t.deepEqual(e.toString(), 'InvalidRuleError: param.should.be.absent(NotExistsId[k:id])')
-  })
+    .then(() => t.fail('should throw'))
+    .catch(e => {
+      t.ok(e instanceof Checks.InvalidRuleError)
+      t.deepEqual(e.toString(), 'InvalidRuleError: param.should.be.absent(NotExistsId[k:id])')
+    })
 
   await check.validate(store, { id: '666' })
-  .then(()=> t.fail('should throw') )
-  .catch(e => {
-    t.ok(e instanceof Checks.InvalidRuleError)
-    t.deepEqual(e.toString(), 'InvalidRuleError: param.should.be.absent(NotExistsId[k:id])')
-  })
+    .then(() => t.fail('should throw'))
+    .catch(e => {
+      t.ok(e instanceof Checks.InvalidRuleError)
+      t.deepEqual(e.toString(), 'InvalidRuleError: param.should.be.absent(NotExistsId[k:id])')
+    })
 
   t.equal(check.presence, Checks.ParamCheck.Presence.absent)
 

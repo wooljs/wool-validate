@@ -17,8 +17,8 @@ const test = require('tape-async')
   , { testAsyncException } = require('./common.js')
 
 test('Checks.Struct', async function (t) {
-  let check = Checks.Struct('key', [Checks.Num('int'), Checks.Str('str'), Checks.Enum('rank', ['S', 'A', 'B'])])
-    , store = new Store()
+  const store = new Store()
+    , check = Checks.Struct('key', [Checks.Num('int'), Checks.Str('str'), Checks.Enum('rank', ['S', 'A', 'B'])])
 
   t.ok('undefined' === typeof await check.validate(store, { key: { int: 42, str: 'plop', rank: 'S' } }))
   t.ok('undefined' === typeof await check.validate(store, { key: { int: 666, str: 'foobar', rank: 'B' } }))
@@ -40,9 +40,9 @@ test('Checks.Struct', async function (t) {
 })
 
 test('Checks.Struct + Struct', async function (t) {
-  let check = Checks.Struct('key', [Checks.Str('str'), Checks.Struct('sub', [Checks.Num('int').asInt()
-    .transform(x => { let r = Math.sqrt(x); if (isNaN(r)) { throw new Error('NaN') } else return r }), Checks.Enum('rank', ['S', 'A', 'B'])])])
-    , store = new Store()
+  const store = new Store()
+    , check = Checks.Struct('key', [Checks.Str('str'), Checks.Struct('sub', [Checks.Num('int').asInt()
+      .transform(x => { let r = Math.sqrt(x); if (isNaN(r)) { throw new Error('NaN') } else return r }), Checks.Enum('rank', ['S', 'A', 'B'])])])
 
   t.ok('undefined' === typeof await check.validate(store, { key: { str: 'plop', sub: { int: 42, rank: 'S' } } }))
 
