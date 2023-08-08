@@ -11,7 +11,7 @@
 
 'use strict'
 
-const test = require('tape-async')
+const test = require('tape')
   , Checks = require(__dirname + '/../index.js')
   , { Store } = require('wool-store')
   , { testAsyncException } = require('./common.js')
@@ -32,7 +32,7 @@ test('Checks.Multi Error on param, toDTO, keptParam, drop,...', async function (
   ])
 
   t.deepEqual(check.toDTO(), { Numkey: true, strkey: true })
-  t.deepEqual(check.keptParam(), [{ k: 'Numkey', keep: true, presence: 1 }, { k: 'strkey', keep: true, presence: 1 }])
+  t.deepEqual(check.keptParam().map(x => Object.assign({}, x)), [{ k: 'Numkey', keep: true, presence: 1 }, { k: 'strkey', keep: true, presence: 1 }])
 
   check = Checks.Multi([
     Checks.Num('Numkey'),
@@ -40,7 +40,7 @@ test('Checks.Multi Error on param, toDTO, keptParam, drop,...', async function (
   ])
 
   t.deepEqual(check.toDTO(), { Numkey: true, strkey: true })
-  t.deepEqual(check.keptParam(), [{ k: 'Numkey', keep: true, presence: 1 }])
+  t.deepEqual(check.keptParam().map(x => Object.assign({}, x)), [{ k: 'Numkey', keep: true, presence: 1 }])
 
   check = Checks.Multi([
     Checks.Num('Numkey'),
@@ -48,7 +48,7 @@ test('Checks.Multi Error on param, toDTO, keptParam, drop,...', async function (
   ])
 
   t.deepEqual(check.toDTO(), { Numkey: true, strkey: true })
-  t.deepEqual(check.keptParam(), [{ k: 'Numkey', keep: true, presence: 1 }, { k: 'strkey', keep: true, presence: 1 }])
+  t.deepEqual(check.keptParam().map(x => Object.assign({}, x)), [{ k: 'Numkey', keep: true, presence: 1 }, { k: 'strkey', keep: true, presence: 1 }])
 
   check = Checks.Multi([
     Checks.Num('Numkey'),
@@ -56,7 +56,7 @@ test('Checks.Multi Error on param, toDTO, keptParam, drop,...', async function (
   ])
 
   t.deepEqual(check.toDTO(), { Numkey: true, strkey: false })
-  t.deepEqual(check.keptParam(), [{ k: 'Numkey', keep: true, presence: 1 }, { k: 'strkey', keep: true, presence: 0, _force_check: false }])
+  t.deepEqual(check.keptParam().map(x => Object.assign({}, x)), [{ k: 'Numkey', keep: true, presence: 1 }, { k: 'strkey', keep: true, presence: 0, _force_check: false }])
 
   t.plan(11)
   t.end()

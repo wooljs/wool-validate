@@ -11,7 +11,7 @@
 
 'use strict'
 
-const test = require('tape-async')
+const test = require('tape')
   , Checks = require(__dirname + '/../index.js')
 
 test('Checks.InvalidRuleError', async function(t) {
