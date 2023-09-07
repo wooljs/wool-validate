@@ -11,6 +11,8 @@
 
 'use strict'
 
+const InvalidRuleError = require('../lib/InvalidRuleError.js')
+
 const test = require('tape')
   , Checks = require(__dirname + '/../index.js')
   , { Store } = require('wool-store')
@@ -117,7 +119,9 @@ test('Checks.Str.regex', async function (t) {
 
 test('Checks.Str.regex.crypto', async function (t) {
   const store = new Store()
-    , check = Checks.Str('key').regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{8,}$/).crypto(x => x.split('').reverse().join(''))
+    , check = Checks.Str('key')
+      .regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{8,}$/)
+      .crypto(x => x.split('').reverse().join(''))
 
   let checked = { key: 'FooBar42' }
   t.ok('undefined' === typeof await check.validate(store, checked))
@@ -139,17 +143,25 @@ test('Checks.Str.regex.crypto', async function (t) {
 
 test('Checks.Str.regex.crypto(hash,match)', async function (t) {
   const store = new Store()
-    , check = Checks.Str('key').regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{8,}$/).crypto({ hash: (x => x), match: (x => x) })
+    , check = Checks.Str('key')
+      .regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{8,}$/)
+      .crypto({ hash: (x => x.split('').reverse().join('')), match: (x => x) })
 
-  t.ok('undefined' === typeof await check.validate(store, { key: 'FooBar42' }))
-  t.ok('undefined' === typeof await check.validate(store, { key: 'xD5Ae8f4ysFG9luB' }))
+  const pl1 = { key: 'FooBar42' }
+  t.ok('undefined' === typeof await check.validate(store, pl1))
+  t.deepEquals(pl1.key, '24raBooF')
+
+  const pl2 = { key: 'xD5Ae8f4ysFG9luB' }
+  t.ok('undefined' === typeof await check.validate(store, pl2))
+  t.deepEquals(pl2.key, 'Bul9GFsy4f8eA5Dx')
+
   await testAsyncException(t, check.validate(store, { key: 'bar' }), 'InvalidRuleError: param.invalid.predicate(StrCheck[k:key], "bar", /^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z0-9]{8,}$/)')
   await testAsyncException(t, check.validate(store, { key: 'another' }), 'InvalidRuleError: param.invalid.predicate(StrCheck[k:key], "another", /^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z0-9]{8,}$/)')
   await testAsyncException(t, check.validate(store, { key: 42 }), 'InvalidRuleError: param.invalid.str(StrCheck[k:key], 42)')
 
   await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.should.be.present(CryptoCheck[k:key])')
 
-  t.plan(10)
+  t.plan(12)
   t.end()
 })
 
@@ -158,10 +170,11 @@ test('Checks.Str.regex.crypto.check', async function (t) {
     , check = Checks.Str('key')
       .regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]{8,}$/)
       .crypto(x => x)
-      .check(async (store, param) => {
+      .getHashFromStore(async (store, param) => {
         let { userId } = param
           , user = await store.get(userId)
-        if (user) return user.password
+        if (!user) throw new InvalidRuleError('user.does.not.exist')
+        return user.password
       })
 
   store.set('foo', { password: 'FooBar42' })

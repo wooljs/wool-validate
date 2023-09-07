@@ -26,25 +26,58 @@ test('Checks.Multi Error on param, toDTO, keptParam, drop,...', async function (
   check = Checks.Multi([])
   t.deepEqual(check.toDTO(), {})
 
+  const CheckStrKey = Checks.Str('strkey')
   check = Checks.Multi([
     Checks.Num('Numkey'),
-    Checks.Str('strkey')
+    CheckStrKey
   ])
 
   t.deepEqual(check.toDTO(), { Numkey: true, strkey: true })
   t.deepEqual(check.keptParam().map(x => Object.assign({}, x)), [{ k: 'Numkey', keep: true, presence: 1 }, { k: 'strkey', keep: true, presence: 1 }])
 
+  // Try to drop before
   check = Checks.Multi([
     Checks.Num('Numkey'),
-    Checks.Str('strkey').drop()
+    CheckStrKey.drop().transform(x => x)
   ])
 
   t.deepEqual(check.toDTO(), { Numkey: true, strkey: true })
   t.deepEqual(check.keptParam().map(x => Object.assign({}, x)), [{ k: 'Numkey', keep: true, presence: 1 }])
 
+  // Try to drop after
   check = Checks.Multi([
     Checks.Num('Numkey'),
-    Checks.Str('strkey').drop().undrop()
+    CheckStrKey.transform(x => x).drop()
+  ])
+
+  t.deepEqual(check.toDTO(), { Numkey: true, strkey: true })
+  t.deepEqual(check.keptParam().map(x => Object.assign({}, x)), [{ k: 'Numkey', keep: true, presence: 1 }])
+
+  // check again to see if drop had modified original CheckStrKey
+  check = Checks.Multi([
+    Checks.Num('Numkey'),
+    CheckStrKey
+  ])
+
+  // Try to drop before
+  check = Checks.Multi([
+    Checks.Num('Numkey'),
+    CheckStrKey.drop().crypto(x => x)
+  ])
+
+  t.deepEqual(check.toDTO(), { Numkey: true, strkey: true })
+  t.deepEqual(check.keptParam().map(x => Object.assign({}, x)), [{ k: 'Numkey', keep: true, presence: 1 }])
+
+  // Try to drop after
+  check = Checks.Multi([
+    Checks.Num('Numkey'),
+    CheckStrKey.crypto(x => x).drop()
+  ])
+
+  // check again to see if drop had modified original CheckStrKey
+  check = Checks.Multi([
+    Checks.Num('Numkey'),
+    CheckStrKey
   ])
 
   t.deepEqual(check.toDTO(), { Numkey: true, strkey: true })
@@ -58,16 +91,16 @@ test('Checks.Multi Error on param, toDTO, keptParam, drop,...', async function (
   t.deepEqual(check.toDTO(), { Numkey: true, strkey: false })
   t.deepEqual(check.keptParam().map(x => Object.assign({}, x)), [{ k: 'Numkey', keep: true, presence: 1 }, { k: 'strkey', keep: true, presence: 0, _force_check: false }])
 
-  t.plan(11)
+  t.plan(15)
   t.end()
 })
 
 test('Checks.Multi', async function (t) {
-  let check = Checks.Multi([
+  let store = new Store()
+    , check = Checks.Multi([
       Checks.Num('Numkey'),
       Checks.Str('strkey')
     ])
-    , store = new Store()
 
   t.ok('undefined' === typeof await check.validate(store, { Numkey: 42, strkey: 'toto' }))
   t.ok('undefined' === typeof await check.validate(store, { Numkey: 42, strkey: 'toto', key: false }))
@@ -83,12 +116,12 @@ test('Checks.Multi', async function (t) {
 })
 
 test('Checks.Multi optional', async function (t) {
-  let check = Checks.Multi([
+  let store = new Store()
+    , check = Checks.Multi([
       Checks.Num('Numkey'),
       Checks.Str('strkey'),
       Checks.Str('foo').optional()
     ])
-    , store = new Store()
 
   t.ok('undefined' === typeof await check.validate(store, { Numkey: 42, strkey: 'toto' }))
   t.ok('undefined' === typeof await check.validate(store, { Numkey: 42, strkey: 'toto', key: false }))
@@ -108,14 +141,14 @@ test('Checks.Multi optional', async function (t) {
 })
 
 test('Checks.Multi absent', async function (t) {
-  let check = Checks.Multi([
+  let store = new Store()
+    , check = Checks.Multi([
       Checks.Id('knownId'),
       Checks.Id('createdId').asNew(),
       Checks.Num('Numkey'),
       Checks.Str('strkey'),
       Checks.Str('foo').absent()
     ])
-    , store = new Store()
 
   await store.set('xxx', {})
 
@@ -137,5 +170,45 @@ test('Checks.Multi absent', async function (t) {
   await testAsyncException(t, check.validate(store, { knownId: 'xxx', Numkey: 42, strkey: 'toto', createdId: 'QSDF' }), 'InvalidRuleError: param.should.be.absent(NotExistsId[k:createdId])')
 
   t.plan(16)
+  t.end()
+})
+
+test('Checks.Multi default', async function (t) {
+  let store = new Store()
+    , check = Checks.Multi([
+      Checks.Num('Numkey'),
+      Checks.Str('strkey').default('plop')
+    ])
+
+  t.ok('undefined' === typeof await check.validate(store, { Numkey: 42, strkey: 'toto' }))
+  t.ok('undefined' === typeof await check.validate(store, { Numkey: 42, strkey: 'toto', key: false }))
+
+  const param = { Numkey: 42 }
+  t.ok('undefined' === typeof await check.validate(store, param))
+  t.deepEquals(param, { Numkey: 42, strkey: 'plop' })
+
+  await testAsyncException(t, check.validate(store, {}), 'InvalidRuleError: param.should.be.present(NumberCheck[k:Numkey])')
+
+  await testAsyncException(t, check.validate(store, { strkey: 'toto' }), 'InvalidRuleError: param.should.be.present(NumberCheck[k:Numkey])')
+
+  t.plan(8)
+  t.end()
+})
+
+test('Checks.Multi extractCreatedParam', async function (t) {
+  let store = new Store()
+    , check = Checks.Multi([
+      Checks.Id('id', { algo: (t) => `plop:${t}` }).asNew(),
+      Checks.Num('Numkey'),
+      Checks.Str('strkey')
+    ])
+
+  const pl = { Numkey: 42, strkey: 'plop' }
+
+  await check.validate(store, pl, 0)
+
+  t.deepEqual(check.extractCreatedParam(pl), { id: 'plop:0' })
+
+  t.plan(1)
   t.end()
 })
