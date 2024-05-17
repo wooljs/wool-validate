@@ -17,16 +17,37 @@ const test = require('tape')
   , { testAsyncException } = require('./common.js')
 
 test('Checks.Bool', async function(t) {
-  let check = Checks.Bool('key')
-    , store = new Store()
+  const store = new Store()
+    , check = Checks.Bool('key')
+    , optionalCheck = check.optional()
+    , absentCheck = check.absent()
+    , defaultCheck = check.default(true)
 
   t.ok('undefined' === typeof await check.validate(store, { key: true }))
   t.ok('undefined' === typeof await check.validate(store, { key: false }))
+
+  t.ok('undefined' === typeof await optionalCheck.validate(store, { key: true }))
+  t.ok('undefined' === typeof await optionalCheck.validate(store, { key: false }))
+  t.ok('undefined' === typeof await optionalCheck.validate(store, { }))
+
+  t.ok('undefined' === typeof await absentCheck.validate(store, { }))
+
+  t.ok('undefined' === typeof await defaultCheck.validate(store, { key: true }))
+  t.ok('undefined' === typeof await defaultCheck.validate(store, { key: false }))
+
+  let o = { }
+  t.ok('undefined' === typeof await defaultCheck.validate(store, o))
+  t.deepEqual(o, { key: true })
+
+  await testAsyncException(t, absentCheck.validate(store, { key: true }), 'InvalidRuleError: param.should.be.absent(BoolCheck[k:key])')
+
   await testAsyncException(t, check.validate(store, { key: 'foo' }), 'InvalidRuleError: param.invalid.bool(BoolCheck[k:key], foo)')
+  await testAsyncException(t, optionalCheck.validate(store, { key: 'foo' }), 'InvalidRuleError: param.invalid.bool(BoolCheck[k:key], foo)')
+  await testAsyncException(t, defaultCheck.validate(store, { key: 'foo' }), 'InvalidRuleError: param.invalid.bool(BoolCheck[k:key], foo)')
 
   await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.should.be.present(BoolCheck[k:key])')
 
-  t.plan(6)
+  t.plan(20)
   t.end()
 })
 

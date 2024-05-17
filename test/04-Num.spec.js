@@ -17,8 +17,8 @@ const test = require('tape')
   , { testAsyncException } = require('./common.js')
 
 test('Checks.Num', async function(t) {
-  let check = Checks.Num('key')
-    , store = new Store()
+  const store = new Store()
+    , check = Checks.Num('key')
 
   t.ok('undefined' === typeof await check.validate(store, { key: 42 }))
   t.ok('undefined' === typeof await check.validate(store, { key: 3.14159 }))
@@ -31,26 +31,52 @@ test('Checks.Num', async function(t) {
 })
 
 test('Checks.Num.predicate', async function(t) {
-  let check = Checks.Num('key').predicate(x => Number.isInteger(Math.sqrt(x)))
-    , store = new Store()
+  const store = new Store()
+    , check = Checks.Num('key').predicate(x => Number.isInteger(Math.sqrt(x)))
+    , optionalCheck = check.optional()
+    , absentCheck = check.absent()
+    , defaultCheck = check.default(64)
+    , defaultCheckFail = check.default(42)
 
   t.ok('undefined' === typeof await check.validate(store, { key: 1 }))
+
+  t.ok('undefined' === typeof await optionalCheck.validate(store, { key: 16 }))
+  t.ok('undefined' === typeof await optionalCheck.validate(store, { }))
+  t.ok('undefined' === typeof await absentCheck.validate(store, { }))
+  t.ok('undefined' === typeof await defaultCheck.validate(store, { key: 256 }))
+  t.ok('undefined' === typeof await defaultCheckFail.validate(store, { key: 1024 }))
+
+  let p = {}
+  t.ok('undefined' === typeof await defaultCheck.validate(store, p))
+  t.deepEqual(p.key, 64)
+
   t.ok('undefined' === typeof await check.validate(store, { key: 4 }))
+
   t.ok('undefined' === typeof await check.validate(store, { key: 9 }))
+
   await testAsyncException(t, check.validate(store, { key: 7 }), 'InvalidRuleError: param.invalid.predicate(NumberCheck[k:key], 7, x => Number.isInteger(Math.sqrt(x)))')
+
+  await testAsyncException(t, optionalCheck.validate(store, { key: 47 }), 'InvalidRuleError: param.invalid.predicate(NumberCheck[k:key], 47, x => Number.isInteger(Math.sqrt(x)))')
+
+  await testAsyncException(t, absentCheck.validate(store, { key: 31 }), 'InvalidRuleError: param.should.be.absent(NumberCheck[k:key])')
+
+  await testAsyncException(t, defaultCheck.validate(store, { key: 77 }), 'InvalidRuleError: param.invalid.predicate(NumberCheck[k:key], 77, x => Number.isInteger(Math.sqrt(x)))')
+  await testAsyncException(t, defaultCheckFail.validate(store, { key: 12 }), 'InvalidRuleError: param.invalid.predicate(NumberCheck[k:key], 12, x => Number.isInteger(Math.sqrt(x)))')
+  await testAsyncException(t, defaultCheckFail.validate(store, { }), 'InvalidRuleError: param.invalid.predicate(NumberCheck[k:key], 42, x => Number.isInteger(Math.sqrt(x)))')
+
   await testAsyncException(t, check.validate(store, { key: [] }), 'InvalidRuleError: param.invalid.num(NumberCheck[k:key], [])')
   await testAsyncException(t, check.validate(store, { key: 'foo' }), 'InvalidRuleError: param.invalid.num(NumberCheck[k:key], "foo")')
   await testAsyncException(t, check.validate(store, { key: true }), 'InvalidRuleError: param.invalid.num(NumberCheck[k:key], true)')
 
   await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.should.be.present(NumberCheck[k:key])')
 
-  t.plan(13)
+  t.plan(30)
   t.end()
 })
 
 test('Checks.Num.asInt', async function(t) {
-  let check = Checks.Num('key').asInt()
-    , store = new Store()
+  const store = new Store()
+    , check = Checks.Num('key').asInt()
 
   t.ok('undefined' === typeof await check.validate(store, { key: 42 }))
   await testAsyncException(t, check.validate(store, { key: 3.14159 }), 'InvalidRuleError: param.invalid.predicate(NumberCheck[k:key], 3.14159, function isInteger() { [native code] })')
@@ -63,22 +89,54 @@ test('Checks.Num.asInt', async function(t) {
 })
 
 test('Checks.Num.asDate', async function(t) {
-  let check = Checks.Num('key').asDate()
-    , store = new Store()
-    , p
+  const store = new Store()
+    , check = Checks.Num('key').asDate()
+
+    , optionalCheck = check.optional()
+    , absentCheck = check.absent()
+
+    , now = Date.now()
+    , defaultCheck = check.default(now)
+
+    , defaultCheckFail = check.default(421.567)
+
+  let p
 
   t.ok('undefined' === typeof await check.validate(store, p = { key: 42 }))
   t.deepEqual(p.key.toISOString(), '1970-01-01T00:00:00.042Z')
+
+  t.ok('undefined' === typeof await optionalCheck.validate(store, p = { key: 65536 }))
+  t.deepEqual(p.key.toISOString(), '1970-01-01T00:01:05.536Z')
+
+  t.ok('undefined' === typeof await optionalCheck.validate(store, { }))
+
+  t.ok('undefined' === typeof await absentCheck.validate(store, { }))
+
+  t.ok('undefined' === typeof await defaultCheck.validate(store, p = { key: 16777216 }))
+  t.deepEqual(p.key.toISOString(), '1970-01-01T04:39:37.216Z')
+
+  t.ok('undefined' === typeof await defaultCheckFail.validate(store, p = { key: 4294967296 }))
+  t.deepEqual(p.key.toISOString(), '1970-02-19T17:02:47.296Z')
+
+  t.ok('undefined' === typeof await defaultCheck.validate(store, p = { }))
+  t.deepEqual(p.key, new Date(now))
+
 
   t.ok('undefined' === typeof await check.validate(store, p = { key: 1565192858493 }))
   t.deepEqual(p.key.toISOString(), '2019-08-07T15:47:38.493Z')
 
   await testAsyncException(t, check.validate(store, { key: 3.14159 }), 'InvalidRuleError: param.invalid.predicate(NumberCheck[k:key], 3.14159, function isInteger() { [native code] })')
+  await testAsyncException(t, optionalCheck.validate(store, { key: .3423532637 }), 'InvalidRuleError: param.invalid.predicate(NumberCheck[k:key], 0.3423532637, function isInteger() { [native code] })')
+  await testAsyncException(t, defaultCheck.validate(store, { key: 9321765.5 }), 'InvalidRuleError: param.invalid.predicate(NumberCheck[k:key], 9321765.5, function isInteger() { [native code] })')
+  await testAsyncException(t, defaultCheckFail.validate(store, { }), 'InvalidRuleError: param.invalid.predicate(NumberCheck[k:key], 421.567, function isInteger() { [native code] })')
+
+  await testAsyncException(t, absentCheck.validate(store, { key: 314159 }), 'InvalidRuleError: param.should.be.absent(TimestampCheck[k:key])')
+
   await testAsyncException(t, check.validate(store, { key: 'foo' }), 'InvalidRuleError: param.invalid.num(NumberCheck[k:key], "foo")')
 
   await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.should.be.present(TimestampCheck[k:key])')
 
-  t.plan(10)
+  t.plan(28)
   t.end()
 })
 

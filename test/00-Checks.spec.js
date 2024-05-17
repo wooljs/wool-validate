@@ -17,7 +17,7 @@ const test = require('tape')
   , { testAsyncException } = require('./common.js')
 
 test('Checks.Has', async function(t) {
-  let check = Checks.Has('key')
+  const check = Checks.Has('key')
     , store = new Store()
 
   t.ok('undefined' === typeof await check.validate(store, { key: true }))
@@ -33,6 +33,57 @@ test('Checks.Has', async function(t) {
   await testAsyncException(t, check.validate(store, { key: true }), 'InvalidRuleError: param.invalid.value.presence(ParamCheck[k:key], 42)')
 
   t.plan(12)
+  t.end()
+})
+
+test('Checks.Has, present, optional, absent', async function(t) {
+  const check = Checks.Has('key')
+    , presentCheck = check.present()
+    , optionalCheck = check.optional()
+    , absentNoCheck = check.absent()
+    , absentWithCheck = check.absent(true)
+    , defaultCheck = check.default(42)
+    , store = new Store()
+
+  t.doesNotEqual(check, presentCheck)
+  t.doesNotEqual(check, optionalCheck)
+  t.doesNotEqual(presentCheck, optionalCheck)
+  t.doesNotEqual(check, absentNoCheck)
+  t.doesNotEqual(check, absentWithCheck)
+  t.doesNotEqual(absentNoCheck, absentWithCheck)
+  t.doesNotEqual(check, defaultCheck)
+
+  t.ok('undefined' === typeof await check.validate(store, { key: true }))
+  t.ok('undefined' === typeof await presentCheck.validate(store, { key: true }))
+  t.ok('undefined' === typeof await optionalCheck.validate(store, { key: true }))
+  t.ok('undefined' === typeof await optionalCheck.validate(store, {}))
+
+  t.ok('undefined' === typeof await check.validate(store, { key: false }))
+  t.ok('undefined' === typeof await presentCheck.validate(store, { key: false }))
+  t.ok('undefined' === typeof await absentNoCheck.validate(store, {}))
+
+  t.ok('undefined' === typeof await check.validate(store, { key: 'foo' }))
+  t.ok('undefined' === typeof await presentCheck.validate(store, { key: 'foo' }))
+  t.ok('undefined' === typeof await absentWithCheck.validate(store, { }))
+
+  let o = { key: true}
+  t.ok('undefined' === typeof await defaultCheck.validate(store, o))
+  t.deepEqual(o, { key: true })
+  o = {}
+  t.ok('undefined' === typeof await defaultCheck.validate(store, o))
+  t.deepEqual(o, { key: 42 })
+
+  t.ok('undefined' === typeof await check.validate(store, { key: true, bar: 42, foo: 'bar' }))
+  t.ok('undefined' === typeof await presentCheck.validate(store, { key: true, bar: 42, foo: 'bar' }))
+
+  await testAsyncException(t, check.validate(store, { }), 'InvalidRuleError: param.should.be.present(ParamCheck[k:key])')
+  await testAsyncException(t, check.validate(store, { foo: 42 }), 'InvalidRuleError: param.should.be.present(ParamCheck[k:key])')
+  await testAsyncException(t, check.validate(store, { bar: true, foo: 'bar'}), 'InvalidRuleError: param.should.be.present(ParamCheck[k:key])')
+
+  check.presence = 42
+  await testAsyncException(t, check.validate(store, { key: true }), 'InvalidRuleError: param.invalid.value.presence(ParamCheck[k:key], 42)')
+
+  t.plan(31)
   t.end()
 })
 

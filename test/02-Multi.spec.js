@@ -96,7 +96,7 @@ test('Checks.Multi Error on param, toDTO, keptParam, drop,...', async function (
 })
 
 test('Checks.Multi', async function (t) {
-  let store = new Store()
+  const store = new Store()
     , check = Checks.Multi([
       Checks.Num('Numkey'),
       Checks.Str('strkey')
@@ -115,7 +115,7 @@ test('Checks.Multi', async function (t) {
   t.end()
 })
 
-test('Checks.Multi optional', async function (t) {
+test('Checks.Multi sub optional', async function (t) {
   let store = new Store()
     , check = Checks.Multi([
       Checks.Num('Numkey'),
@@ -140,7 +140,7 @@ test('Checks.Multi optional', async function (t) {
   t.end()
 })
 
-test('Checks.Multi absent', async function (t) {
+test('Checks.Multi sub absent', async function (t) {
   let store = new Store()
     , check = Checks.Multi([
       Checks.Id('knownId'),
@@ -173,7 +173,7 @@ test('Checks.Multi absent', async function (t) {
   t.end()
 })
 
-test('Checks.Multi default', async function (t) {
+test('Checks.Multi sub default', async function (t) {
   let store = new Store()
     , check = Checks.Multi([
       Checks.Num('Numkey'),
@@ -192,6 +192,65 @@ test('Checks.Multi default', async function (t) {
   await testAsyncException(t, check.validate(store, { strkey: 'toto' }), 'InvalidRuleError: param.should.be.present(NumberCheck[k:Numkey])')
 
   t.plan(8)
+  t.end()
+})
+
+test('Checks.Multi full optional', async function (t) {
+  const store = new Store()
+    , check = Checks.Multi([
+      Checks.Num('Numkey'),
+      Checks.Str('strkey')
+    ])
+    , optional = check.optional()
+
+  t.ok('undefined' === typeof await check.validate(store, { Numkey: 42, strkey: 'toto' }))
+  t.ok('undefined' === typeof await optional.validate(store, { Numkey: 42, strkey: 'toto' }))
+  t.ok('undefined' === typeof await optional.validate(store, { Numkey: 42 }))
+  t.ok('undefined' === typeof await optional.validate(store, { strkey: 'toto' }))
+  t.ok('undefined' === typeof await optional.validate(store, { }))
+
+  t.ok('undefined' === typeof await check.validate(store, { Numkey: 42, strkey: 'toto', key: false }))
+  t.ok('undefined' === typeof await optional.validate(store, { Numkey: 42, strkey: 'toto', key: false }))
+
+
+  await testAsyncException(t, check.validate(store, {}), 'InvalidRuleError: param.should.be.present(NumberCheck[k:Numkey])')
+
+  await testAsyncException(t, check.validate(store, { Numkey: 42 }), 'InvalidRuleError: param.should.be.present(StrCheck[k:strkey])')
+
+  await testAsyncException(t, check.validate(store, { strkey: 'toto' }), 'InvalidRuleError: param.should.be.present(NumberCheck[k:Numkey])')
+
+  t.plan(13)
+  t.end()
+})
+
+test('Checks.Multi full absent', async function (t) {
+  const store = new Store()
+    , check = Checks.Multi([
+      Checks.Num('Numkey'),
+      Checks.Str('strkey')
+    ])
+    , absent = check.absent()
+
+  t.ok('undefined' === typeof await check.validate(store, { Numkey: 42, strkey: 'toto' }))
+  t.ok('undefined' === typeof await absent.validate(store, { }))
+
+  t.ok('undefined' === typeof await check.validate(store, { Numkey: 42, strkey: 'toto', key: false }))
+  t.ok('undefined' === typeof await absent.validate(store, { key: false }))
+
+
+  await testAsyncException(t, check.validate(store, {}), 'InvalidRuleError: param.should.be.present(NumberCheck[k:Numkey])')
+
+  await testAsyncException(t, absent.validate(store, {Numkey: 42, strkey: 'toto' }), 'InvalidRuleError: param.should.be.absent(NumberCheck[k:Numkey])')
+
+  await testAsyncException(t, check.validate(store, { Numkey: 42 }), 'InvalidRuleError: param.should.be.present(StrCheck[k:strkey])')
+
+  await testAsyncException(t, absent.validate(store, { Numkey: 42 }), 'InvalidRuleError: param.should.be.absent(NumberCheck[k:Numkey])')
+
+  await testAsyncException(t, check.validate(store, { strkey: 'toto' }), 'InvalidRuleError: param.should.be.present(NumberCheck[k:Numkey])')
+
+  await testAsyncException(t, absent.validate(store, { strkey: 'toto' }), 'InvalidRuleError: param.should.be.absent(StrCheck[k:strkey])')
+
+  t.plan(16)
   t.end()
 })
 
