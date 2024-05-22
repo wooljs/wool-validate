@@ -15,7 +15,7 @@ const Checks = require(__dirname + '/../index.js')
 
 module.exports = {
   async testAsyncException(t, r, m, IRE = true) {
-    let s = new Error().stack
+    const s = new Error().stack
     try {
       await r
       t.fail('should throw: ' + m)

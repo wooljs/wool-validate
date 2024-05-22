@@ -217,9 +217,9 @@ test('Checks.Str.regex.crypto.check', async function (t) {
   t.end()
 })
 
-test('Checks.Str.asNumber', async function(t) {
+test('Checks.Str.asNum', async function(t) {
   const store = new Store()
-    , check = Checks.Str('key').asNumber()
+    , check = Checks.Str('key').asNum()
 
   t.ok('undefined' === typeof await check.validate(store, { key: '42' }))
   t.ok('undefined' === typeof await check.validate(store, { key: '3.14159' }))
@@ -234,9 +234,9 @@ test('Checks.Str.asNumber', async function(t) {
   t.end()
 })
 
-test('Checks.Str.asNumber.asInt', async function(t) {
+test('Checks.Str.asNum.asInt', async function(t) {
   const store = new Store()
-    , check = Checks.Str('key').asNumber().asInt()
+    , check = Checks.Str('key').asNum().asInt()
 
   t.ok('undefined' === typeof await check.validate(store, { key: '42' }))
 
@@ -252,8 +252,8 @@ test('Checks.Str.asNumber.asInt', async function(t) {
   t.end()
 })
 
-test('Check.Str.asNumber.min', async function(t) {
-  let check = Checks.Str('key').asNumber().min(-1.5)
+test('Check.Str.asNum.min', async function(t) {
+  let check = Checks.Str('key').asNum().min(-1.5)
     , store = new Store()
 
   t.ok('undefined' === typeof await check.validate(store, { key: '42' }))
@@ -277,8 +277,8 @@ test('Check.Str.asNumber.min', async function(t) {
   t.end()
 })
 
-test('Check.Str.asNumber.max', async function(t) {
-  let check = Checks.Str('key').asNumber().max(42)
+test('Check.Str.asNum.max', async function(t) {
+  let check = Checks.Str('key').asNum().max(42)
     , store = new Store()
 
   t.ok('undefined' === typeof await check.validate(store, { key: '42' }))
@@ -302,8 +302,8 @@ test('Check.Str.asNumber.max', async function(t) {
   t.end()
 })
 
-test('Check.Str.asNumber.asInt.min.max', async function(t) {
-  let check = Checks.Str('key').asNumber().asInt().min(0).max(4.5)
+test('Check.Str.asNum.asInt.min.max', async function(t) {
+  let check = Checks.Str('key').asNum().asInt().min(0).max(4.5)
     , store = new Store()
 
   t.ok('undefined' === typeof await check.validate(store, { key: '4' }))

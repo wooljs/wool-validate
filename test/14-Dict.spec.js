@@ -84,10 +84,34 @@ test('Checks.Dict Enum Num', async function (t) {
   t.end()
 })
 
-test.skip('Checks.Dict Num Enum', async function (t) {
+test('Checks.Dict Id Enum', async function (t) {
   const store = new Store()
     , check = Checks.Dict('key',
-      Checks.Str().asNumber(),
+      Checks.Id('id'),
+      Checks.Enum(['foo', 'bar'])
+    )
+
+  t.ok('undefined' === typeof await check.validate(store, { key: {} }))
+
+  await testAsyncException(t, check.validate(store, { key: {12: 'bar'} }), 'InvalidRuleError: param.invalid.dict.key(DictCheck[k:key], param.should.exists.in.store(ValidId[k:id], 12))')
+  await testAsyncException(t, check.validate(store, { key: {42: 'foo'} }), 'InvalidRuleError: param.invalid.dict.key(DictCheck[k:key], param.should.exists.in.store(ValidId[k:id], 42))')
+
+  await store.set('42', { id: '42', foo: 'bar' })
+
+  t.ok('undefined' === typeof await check.validate(store, { key: { 42: 'foo' } }))
+
+  await testAsyncException(t, check.validate(store, { key: { 12: 'bar' } }), 'InvalidRuleError: param.invalid.dict.key(DictCheck[k:key], param.should.exists.in.store(ValidId[k:id], 12))')
+
+  await testAsyncException(t, check.validate(store, { 12: 'bar' }), 'InvalidRuleError: param.should.be.present(DictCheck[k:key])')
+  await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.should.be.present(DictCheck[k:key])')
+  t.plan(12)
+  t.end()
+})
+
+test('Checks.Dict Str.asNum Enum', async function (t) {
+  const store = new Store()
+    , check = Checks.Dict('key',
+      Checks.Str().asNum(),
       Checks.Enum(['foo', 'bar'])
     )
 
@@ -97,20 +121,21 @@ test.skip('Checks.Dict Num Enum', async function (t) {
   t.ok('undefined' === typeof await check.validate(store, { key: { 42: 'foo' , 3.14159: 'bar', 1.6e10:'foo' } }))
 
   await store.set('foo', 666)
-  await testAsyncException(t, check.validate(store, { key: { foo: 666 } }), /^InvalidRuleError: param\.validation\.error\(DictCheck\[k:key\], ! 666 !, Error: ! 666 !/, false)
+  await testAsyncException(t, check.validate(store, { key: { foo: 666 } }), 'InvalidRuleError: param.invalid.dict.key(DictCheck[k:key], param.invalid.predicate(StrCheck[], "foo", NumberStrCheck.isNumber()))')
   await store.del('foo')
 
-  await testAsyncException(t, check.validate(store, { key: { foo: 42, bar: -1 } }), /^InvalidRuleError: param\.validation\.error\(DictCheck\[k:key\], NaN, Error: NaN/, false)
+  await testAsyncException(t, check.validate(store, { key: { foo: 42, bar: -1 } }), 'InvalidRuleError: param.invalid.dict.key(DictCheck[k:key], param.invalid.predicate(StrCheck[], "foo", NumberStrCheck.isNumber()))')
 
-  await testAsyncException(t, check.validate(store, { key: { foo: 42, bar: 0 } }), 'InvalidRuleError: param.invalid.dict.val(DictCheck[k:key], param.invalid.predicate(NumberCheck[], 0, x >= 1))')
-  await testAsyncException(t, check.validate(store, { key: { foobar: 'plop', bar: 3.14159 } }), 'InvalidRuleError: param.invalid.dict.key(DictCheck[k:key], param.invalid.enum("foobar"))')
-  await testAsyncException(t, check.validate(store, { key: { foo: 'plop', bar: -1 } }), 'InvalidRuleError: param.invalid.dict.val(DictCheck[k:key], param.invalid.num("plop"))')
+  await testAsyncException(t, check.validate(store, { key: { foo: 42, bar: 0 } }), 'InvalidRuleError: param.invalid.dict.key(DictCheck[k:key], param.invalid.predicate(StrCheck[], "foo", NumberStrCheck.isNumber()))')
+  await testAsyncException(t, check.validate(store, { key: { foobar: 'plop', bar: 3.14159 } }), 'InvalidRuleError: param.invalid.dict.key(DictCheck[k:key], param.invalid.predicate(StrCheck[], "foobar", NumberStrCheck.isNumber()))')
+  await testAsyncException(t, check.validate(store, { key: { foo: 'plop', bar: -1 } }), 'InvalidRuleError: param.invalid.dict.key(DictCheck[k:key], param.invalid.predicate(StrCheck[], "foo", NumberStrCheck.isNumber()))')
   await testAsyncException(t, check.validate(store, { key: [] }), 'InvalidRuleError: param.invalid.dict(DictCheck[k:key], [])')
   await testAsyncException(t, check.validate(store, { key: ['plop'] }), 'InvalidRuleError: param.invalid.dict(DictCheck[k:key], ["plop"])')
   await testAsyncException(t, check.validate(store, { key: 42 }), 'InvalidRuleError: param.invalid.dict(DictCheck[k:key], 42)')
   await testAsyncException(t, check.validate(store, { key: true }), 'InvalidRuleError: param.invalid.dict(DictCheck[k:key], true)')
   await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.should.be.present(DictCheck[k:key])')
-  t.plan(22)
+
+  t.plan(24)
   t.end()
 })
 
