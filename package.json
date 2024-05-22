@@ -10,7 +10,7 @@
     "lint": "eslint index.js lib/ test/",
     "lint:watch": "nodemon -x 'npm run lint'",
     "coverage": "c8 tape test/**/*.spec.js && c8 report --reporter=html",
-    "preversion": "npm test && npm outdated && npm audit --only=prod"
+    "preversion": "npm test && npm audit --only=prod #&& npm outdated"
   },
   "repository": {
     "type": "git",
@@ -27,10 +27,10 @@
   "homepage": "https://github.com/nicocube/wool-validate#readme",
   "devDependencies": {
     "@freecube/tap-summary": "^4.0.4",
-    "c8": "^8.0.1",
-    "eslint": "^8.53.0",
-    "nodemon": "^3.0.1",
-    "tape": "^5.7.2",
+    "c8": "^9.1.0",
+    "eslint": "^8.57.0",
+    "nodemon": "^3.1.0",
+    "tape": "^5.7.5",
     "wool-store": "^2.3.0"
   }
 }

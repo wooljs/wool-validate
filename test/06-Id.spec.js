@@ -20,6 +20,9 @@ test('Checks.Id', async function (t) {
   const store = new Store()
     , check = Checks.Id('id')
 
+
+  t.deepEqual(check.toFullString(), 'ValidId[k:id]')
+
   try {
     check.absent(true)
     t.fail('should throw')
@@ -40,7 +43,7 @@ test('Checks.Id', async function (t) {
   t.ok('undefined' === typeof await check.validate(store, { id: '42', foo: true }))
   t.ok(check.isOne('42'))
 
-  t.plan(6)
+  t.plan(7)
   t.end()
 })
 
@@ -49,6 +52,10 @@ test('Checks.Id prefix', async function (t) {
     , check = Checks.Id('id', { prefix: 'test: ' })
     , optionalCheck = check.optional()
     , absentNoCheck = check.absent()
+
+  t.deepEqual(check.toFullString(), 'ValidId[k:id]')
+  t.deepEqual(optionalCheck.toFullString(), 'ValidId[k:id(*)]')
+  t.deepEqual(absentNoCheck.toFullString(), 'ValidId[k:id(!)]')
 
   await store.set('test: 42', { id: '42', foo: 'bar' })
 
@@ -91,13 +98,15 @@ test('Checks.Id prefix', async function (t) {
   t.ok(check.isOne()('test: XX'))
   t.notOk(check.isOne()('crap: XX'))
 
-  t.plan(16)
+  t.plan(19)
   t.end()
 })
 
 test('Checks.Id alias', async function (t) {
   const store = new Store()
     , check = Checks.Id('id', { prefix: 'test: ' }).alias('foobar')
+
+  t.deepEqual(check.toFullString(), 'ValidId[k:foobar]')
 
   try {
     check.absent(true)
@@ -145,7 +154,7 @@ test('Checks.Id alias', async function (t) {
   t.ok(check.isOne()('test: XX'))
   t.notOk(check.isOne()('crap: XX'))
 
-  t.plan(14)
+  t.plan(15)
   t.end()
 })
 
@@ -156,6 +165,8 @@ test('Checks.Id.asNew()', async function (t) {
     , d = new Date()
   let p
 
+  t.deepEqual(check.toFullString(), 'NotExistsId[k:id]')
+
   t.ok('undefined' === typeof await check.validate(store, p = { foo: true }, d))
   t.ok('id' in p)
   t.deepEqual(p.id, '0' + d.getTime().toString(16) + '0000')
@@ -165,7 +176,7 @@ test('Checks.Id.asNew()', async function (t) {
   t.ok('undefined' === typeof await check.validate(store, p = { foo: true }))
   t.ok('id' in p)
   t.ok(/^test: /.test(check.as(p.id)))
-  t.plan(9)
+  t.plan(10)
   t.end()
 })
 
@@ -175,6 +186,24 @@ test('Checks.Id.asNew() algo', async function (t) {
     , check = Checks.Id('id', { prefix: 'test: ', algo }).asNew()
     , d = new Date()
   let p
+
+  t.deepEqual(check.toFullString(), 'NotExistsId[k:id]')
+
+  try {
+    check.present()
+    t.fail('should throw')
+  } catch (e) {
+    t.ok(e instanceof Checks.InvalidRuleError)
+    t.deepEqual(e.toString(), 'InvalidRuleError: param.cannot.be.present(NotExistsId[k:id])')
+  }
+
+  try {
+    check.optional()
+    t.fail('should throw')
+  } catch (e) {
+    t.ok(e instanceof Checks.InvalidRuleError)
+    t.deepEqual(e.toString(), 'InvalidRuleError: param.cannot.be.optional(NotExistsId[k:id])')
+  }
 
   try {
     check.absent()
@@ -231,7 +260,7 @@ test('Checks.Id.asNew() algo', async function (t) {
 
   t.equal(check.presence, Checks.ParamCheck.Presence.absent)
 
-  t.plan(17)
+  t.plan(22)
   t.end()
 })
 
@@ -242,6 +271,8 @@ test('Checks.Id.notInStore()', async function (t) {
     , absentNoCheck = check.absent()
     , d = new Date()
   let p
+
+  t.deepEqual(check.toFullString(), 'NotInStoreId[k:id]')
 
   try {
     check.absent(true)
@@ -306,15 +337,19 @@ test('Checks.Id.notInStore()', async function (t) {
       t.deepEqual(e.toString(), 'InvalidRuleError: param.should.be.present(NotInStoreId[k:id])')
     })
 
-  t.plan(24)
+  t.plan(25)
   t.end()
 })
 
 test('Checks.Id.noCheck()', async function (t) {
   const store = new Store()
     , check = Checks.Id('id', { prefix: 'foo: ' }).noCheck()
+    , absentNoCheck = check.absent()
+    , absentWithCheck = check.absent(true)
     , d = new Date()
   let p
+
+  t.deepEqual(check.toFullString(), 'NoCheckId[k:id]')
 
   await check.validate(store, { foo: true })
     .then(() => t.fail('should throw'))
@@ -327,6 +362,9 @@ test('Checks.Id.noCheck()', async function (t) {
   t.ok('id' in p)
   t.deepEqual(p.id, '42')
 
-  t.plan(5)
+  t.ok('undefined' === typeof await absentNoCheck.validate(store, {}, d))
+  t.ok('undefined' === typeof await absentWithCheck.validate(store, {}, d))
+
+  t.plan(8)
   t.end()
 })

@@ -23,6 +23,11 @@ test('Checks.Bool', async function(t) {
     , absentCheck = check.absent()
     , defaultCheck = check.default(true)
 
+  t.deepEqual(check.toFullString(), 'BoolCheck[k:key]')
+  t.deepEqual(absentCheck.toFullString(), 'BoolCheck[k:key(!)]')
+  t.deepEqual(optionalCheck.toFullString(), 'BoolCheck[k:key(*)]')
+  t.deepEqual(defaultCheck.toFullString(), 'BoolCheck[k:key(=true)]')
+
   t.ok('undefined' === typeof await check.validate(store, { key: true }))
   t.ok('undefined' === typeof await check.validate(store, { key: false }))
 
@@ -47,7 +52,7 @@ test('Checks.Bool', async function(t) {
 
   await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.should.be.present(BoolCheck[k:key])')
 
-  t.plan(20)
+  t.plan(24)
   t.end()
 })
 

@@ -17,16 +17,28 @@ const test = require('tape')
   , { testAsyncException } = require('./common.js')
 
 test('Checks.Tuple Str Num', async function (t) {
-  let store = new Store()
+  const store = new Store()
     , check = Checks.Tuple('key', [
       Checks.Str().regex(/^[a-z]+$/),
       Checks.Num().asInt()
     ])
+    , optionalCheck = check.optional()
+    , absentCheck = check.absent()
+
+  t.deepEqual(check.toFullString(), 'TupleCheck[k:key]{ RegexCheck[](?:/^[a-z]+$/), IntegerCheck[](?:Number.isInteger()) }')
+  t.deepEqual(optionalCheck.toFullString(), 'TupleCheck[k:key(*)]{ RegexCheck[](?:/^[a-z]+$/), IntegerCheck[](?:Number.isInteger()) }')
+  t.deepEqual(absentCheck.toFullString(), 'TupleCheck[k:key(!)]{ RegexCheck[](?:/^[a-z]+$/), IntegerCheck[](?:Number.isInteger()) }')
 
   t.ok('undefined' === typeof await check.validate(store, { key: ['plop', 42] }))
+  t.ok('undefined' === typeof await optionalCheck.validate(store, { key: ['plop', 42] }))
+  t.ok('undefined' === typeof await optionalCheck.validate(store, { }))
+  t.ok('undefined' === typeof await absentCheck.validate(store, {  }))
   t.ok('undefined' === typeof await check.validate(store, { key: ['bar', -1e10] }))
-  await testAsyncException(t, check.validate(store, { key: ['foo', 3.14159] }), 'InvalidRuleError: param.invalid.tuple.item.at(TupleCheck[k:key], 1, param.invalid.predicate(NumberCheck[], 3.14159, function isInteger() { [native code] }))')
+  await testAsyncException(t, check.validate(store, { }), 'InvalidRuleError: param.should.be.present(TupleCheck[k:key])')
+  await testAsyncException(t, absentCheck.validate(store, { key: ['plop', 42] }), 'InvalidRuleError: param.should.be.absent(TupleCheck[k:key])')
+  await testAsyncException(t, check.validate(store, { key: ['foo', 3.14159] }), 'InvalidRuleError: param.invalid.tuple.item.at(TupleCheck[k:key], 1, param.invalid.predicate(NumberCheck[], 3.14159, Number.isInteger()))')
   await testAsyncException(t, check.validate(store, { key: ['bar', -1e10, true] }), 'InvalidRuleError: param.invalid.tuple.wrong.length.expected.actual(TupleCheck[k:key], 2, 3, ["bar",-10000000000,true])')
+  await testAsyncException(t, optionalCheck.validate(store, { key: ['bar', -1e10, true] }), 'InvalidRuleError: param.invalid.tuple.wrong.length.expected.actual(TupleCheck[k:key], 2, 3, ["bar",-10000000000,true])')
   await testAsyncException(t, check.validate(store, { key: [] }), 'InvalidRuleError: param.invalid.tuple.wrong.length.expected.actual(TupleCheck[k:key], 2, 0, [])')
   await testAsyncException(t, check.validate(store, { key: [42] }), 'InvalidRuleError: param.invalid.tuple.wrong.length.expected.actual(TupleCheck[k:key], 2, 1, [42])')
   await testAsyncException(t, check.validate(store, { key: [42, 666, 3.14159] }), 'InvalidRuleError: param.invalid.tuple.wrong.length.expected.actual(TupleCheck[k:key], 2, 3, [42,666,3.14159])')
@@ -39,12 +51,12 @@ test('Checks.Tuple Str Num', async function (t) {
 
   await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.should.be.present(TupleCheck[k:key])')
 
-  t.plan(26)
+  t.plan(38)
   t.end()
 })
 
 test('Checks.Tuple Str Num predicate', async function (t) {
-  let store = new Store()
+  const store = new Store()
     , check = Checks.Tuple('key', [
       Checks.Str().regex(/^[a-z]+$/),
       Checks.Num().asInt()
@@ -55,7 +67,7 @@ test('Checks.Tuple Str Num predicate', async function (t) {
   t.ok('undefined' === typeof await check.validate(store, { key: ['bar', 3] }))
   await testAsyncException(t, check.validate(store, { key: ['foo', -1] }), /^InvalidRuleError: param\.validation\.error\(TupleCheck\[k:key\], NaN, Error: NaN/, false)
   await testAsyncException(t, check.validate(store, { key: ['foo', 0] }), 'InvalidRuleError: param.invalid.predicate(TupleCheck[k:key], ["foo",0], ([a, b]) => a.length === b)')
-  await testAsyncException(t, check.validate(store, { key: ['foo', 3.14159] }), 'InvalidRuleError: param.invalid.tuple.item.at(TupleCheck[k:key], 1, param.invalid.predicate(NumberCheck[], 3.14159, function isInteger() { [native code] }))')
+  await testAsyncException(t, check.validate(store, { key: ['foo', 3.14159] }), 'InvalidRuleError: param.invalid.tuple.item.at(TupleCheck[k:key], 1, param.invalid.predicate(NumberCheck[], 3.14159, Number.isInteger()))')
   await testAsyncException(t, check.validate(store, { key: ['bar', -1e10, true] }), 'InvalidRuleError: param.invalid.tuple.wrong.length.expected.actual(TupleCheck[k:key], 2, 3, ["bar",-10000000000,true])')
   await testAsyncException(t, check.validate(store, { key: [] }), 'InvalidRuleError: param.invalid.tuple.wrong.length.expected.actual(TupleCheck[k:key], 2, 0, [])')
   await testAsyncException(t, check.validate(store, { key: [42] }), 'InvalidRuleError: param.invalid.tuple.wrong.length.expected.actual(TupleCheck[k:key], 2, 1, [42])')
@@ -74,7 +86,7 @@ test('Checks.Tuple Str Num predicate', async function (t) {
 })
 
 test('Checks.Tuple Enum Num Bool', async function (t) {
-  let store = new Store()
+  const store = new Store()
     , check = Checks.Tuple('key', [
       Checks.Enum('', ['foo', 'bar']),
       Checks.Num().min(0), Checks.Bool()

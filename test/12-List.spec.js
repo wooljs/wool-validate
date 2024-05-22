@@ -19,12 +19,25 @@ const test = require('tape')
 test('Checks.List Str.regex', async function(t) {
   let check = Checks.List('key', Checks.Str().regex(/^[a-z]+$/))
     , store = new Store()
+    , optionalCheck = check.optional()
+    , absentCheck = check.absent()
+
+  t.deepEqual(check.toFullString(), 'ListCheck[k:key]{ RegexCheck[](?:/^[a-z]+$/) }')
+  t.deepEqual(optionalCheck.toFullString(), 'ListCheck[k:key(*)]{ RegexCheck[](?:/^[a-z]+$/) }')
+  t.deepEqual(absentCheck.toFullString(), 'ListCheck[k:key(!)]{ RegexCheck[](?:/^[a-z]+$/) }')
 
   t.ok('undefined' === typeof await check.validate(store, { key: [ ] }))
+  t.ok('undefined' === typeof await optionalCheck.validate(store, { key: [ ] }))
   t.ok('undefined' === typeof await check.validate(store, { key: [ 'foo' ] }))
   t.ok('undefined' === typeof await check.validate(store, { key: [ 'foo', 'bar' ] }))
+  t.ok('undefined' === typeof await optionalCheck.validate(store, { key: [ 'foo', 'bar' ] }))
   t.ok('undefined' === typeof await check.validate(store, { key: [ 'another', 'foo', 'bar' ] }))
+  t.ok('undefined' === typeof await optionalCheck.validate(store, {  }))
+  t.ok('undefined' === typeof await absentCheck.validate(store, {  }))
+  await testAsyncException(t, check.validate(store, { }), 'InvalidRuleError: param.should.be.present(ListCheck[k:key])')
+  await testAsyncException(t, absentCheck.validate(store, { key: [ 'foo', 'bar' ]  }), 'InvalidRuleError: param.should.be.absent(ListCheck[k:key])')
   await testAsyncException(t, check.validate(store, { key: [ '##yo"' ] }), 'InvalidRuleError: param.invalid.list.item.at(ListCheck[k:key], 0, param.invalid.predicate(StrCheck[], "##yo\\"", /^[a-z]+$/))')
+  await testAsyncException(t, optionalCheck.validate(store, { key: [ '##yaya"' ]  }), 'InvalidRuleError: param.invalid.list.item.at(ListCheck[k:key], 0, param.invalid.predicate(StrCheck[], "##yaya\\"", /^[a-z]+$/))')
   await testAsyncException(t, check.validate(store, { key: [ 42 ] }), 'InvalidRuleError: param.invalid.list.item.at(ListCheck[k:key], 0, param.invalid.str(42))')
   await testAsyncException(t, check.validate(store, { key: [ 42, 666 ] }), 'InvalidRuleError: param.invalid.list.item.at(ListCheck[k:key], 0, param.invalid.str(42))')
   await testAsyncException(t, check.validate(store, { key: [ 'plop', 42 ] }), 'InvalidRuleError: param.invalid.list.item.at(ListCheck[k:key], 1, param.invalid.str(42))')
@@ -35,7 +48,7 @@ test('Checks.List Str.regex', async function(t) {
 
   await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.should.be.present(ListCheck[k:key])')
 
-  t.plan(22)
+  t.plan(35)
   t.end()
 })
 
@@ -46,7 +59,7 @@ test('Checks.List Num', async function(t) {
   t.ok('undefined' === typeof await check.validate(store, { key: [ ] }))
   t.ok('undefined' === typeof await check.validate(store, { key: [ 42 ] }))
   t.ok('undefined' === typeof await check.validate(store, { key: [ 42, 666 ] }))
-  await testAsyncException(t, check.validate(store, { key: [ 42, 666, 3.14159 ] }), 'InvalidRuleError: param.invalid.list.item.at(ListCheck[k:key], 2, param.invalid.predicate(NumberCheck[], 3.14159, function isInteger() { [native code] }))')
+  await testAsyncException(t, check.validate(store, { key: [ 42, 666, 3.14159 ] }), 'InvalidRuleError: param.invalid.list.item.at(ListCheck[k:key], 2, param.invalid.predicate(NumberCheck[], 3.14159, Number.isInteger()))')
   await testAsyncException(t, check.validate(store, { key: [ 42, true, undefined ] }), 'InvalidRuleError: param.invalid.list.item.at(ListCheck[k:key], 1, param.invalid.num(true))')
   await testAsyncException(t, check.validate(store, { key: [ 'foo' ] }), 'InvalidRuleError: param.invalid.list.item.at(ListCheck[k:key], 0, param.invalid.num("foo"))')
   await testAsyncException(t, check.validate(store, { key: [ {}, 'bar' ] }), 'InvalidRuleError: param.invalid.list.item.at(ListCheck[k:key], 0, param.invalid.num({}))')
@@ -75,7 +88,7 @@ test('Checks.List Num predicate', async function(t) {
 
   await testAsyncException(t, check.validate(store, { key: [ 0 ] }), /^InvalidRuleError: param\.validation\.error\(ListCheck\[k:key\], zero, Error: zero/, false)
 
-  await testAsyncException(t, check.validate(store, { key: [ 42, 666, 3.14159 ] }), 'InvalidRuleError: param.invalid.list.item.at(ListCheck[k:key], 2, param.invalid.predicate(NumberCheck[], 3.14159, function isInteger() { [native code] }))')
+  await testAsyncException(t, check.validate(store, { key: [ 42, 666, 3.14159 ] }), 'InvalidRuleError: param.invalid.list.item.at(ListCheck[k:key], 2, param.invalid.predicate(NumberCheck[], 3.14159, Number.isInteger()))')
   await testAsyncException(t, check.validate(store, { key: [ 42 ] }), 'InvalidRuleError: param.invalid.predicate(ListCheck[k:key], [42], l => l.reduce((a,b)=>(a+b),0) < 10)')
 
   t.plan(9)

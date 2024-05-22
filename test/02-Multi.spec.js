@@ -50,6 +50,21 @@ test('Checks.Multi Error on param, toDTO, keptParam, drop,...', async function (
     CheckStrKey.transform(x => x).drop()
   ])
 
+  // Try to drop before
+  check = Checks.Multi([
+    Checks.Num('Numkey'),
+    CheckStrKey.drop().optional()
+  ])
+
+  t.deepEqual(check.toDTO(), { Numkey: true, strkey: true })
+  t.deepEqual(check.keptParam().map(x => Object.assign({}, x)), [{ k: 'Numkey', keep: true, presence: 1 }])
+
+  // Try to drop after
+  check = Checks.Multi([
+    Checks.Num('Numkey'),
+    CheckStrKey.optional().drop()
+  ])
+
   t.deepEqual(check.toDTO(), { Numkey: true, strkey: true })
   t.deepEqual(check.keptParam().map(x => Object.assign({}, x)), [{ k: 'Numkey', keep: true, presence: 1 }])
 
@@ -91,7 +106,7 @@ test('Checks.Multi Error on param, toDTO, keptParam, drop,...', async function (
   t.deepEqual(check.toDTO(), { Numkey: true, strkey: false })
   t.deepEqual(check.keptParam().map(x => Object.assign({}, x)), [{ k: 'Numkey', keep: true, presence: 1 }, { k: 'strkey', keep: true, presence: 0, _force_check: false }])
 
-  t.plan(15)
+  t.plan(17)
   t.end()
 })
 
@@ -102,16 +117,54 @@ test('Checks.Multi', async function (t) {
       Checks.Str('strkey')
     ])
 
+  try {
+    check.absent()
+    t.fail('should have failed')
+  } catch(e) {
+    t.ok(e instanceof Checks.InvalidRuleError)
+    t.deepEqual(e.toString(), 'InvalidRuleError: param.multi.cannot.be.absent(MultiCheck[])')
+  }
+
+  try {
+    check.present()
+    t.fail('should have failed')
+  } catch(e) {
+    t.ok(e instanceof Checks.InvalidRuleError)
+    t.deepEqual(e.toString(), 'InvalidRuleError: param.multi.already.present(MultiCheck[])')
+  }
+
+  try {
+    check.optional()
+    t.fail('should have failed')
+  } catch(e) {
+    t.ok(e instanceof Checks.InvalidRuleError)
+    t.deepEqual(e.toString(), 'InvalidRuleError: param.multi.cannot.be.optional(MultiCheck[])')
+  }
+
+  try {
+    check.default()
+    t.fail('should have failed')
+  } catch(e) {
+    t.ok(e instanceof Checks.InvalidRuleError)
+    t.deepEqual(e.toString(), 'InvalidRuleError: param.multi.cannot.have.default(MultiCheck[])')
+  }
+
   t.ok('undefined' === typeof await check.validate(store, { Numkey: 42, strkey: 'toto' }))
   t.ok('undefined' === typeof await check.validate(store, { Numkey: 42, strkey: 'toto', key: false }))
 
   await testAsyncException(t, check.validate(store, {}), 'InvalidRuleError: param.should.be.present(NumberCheck[k:Numkey])')
-
   await testAsyncException(t, check.validate(store, { Numkey: 42 }), 'InvalidRuleError: param.should.be.present(StrCheck[k:strkey])')
-
   await testAsyncException(t, check.validate(store, { strkey: 'toto' }), 'InvalidRuleError: param.should.be.present(NumberCheck[k:Numkey])')
 
-  t.plan(8)
+  const cloneCheck = check.clone()
+  t.ok('undefined' === typeof await cloneCheck.validate(store, { Numkey: 42, strkey: 'toto' }))
+  t.ok('undefined' === typeof await cloneCheck.validate(store, { Numkey: 42, strkey: 'toto', key: false }))
+
+  await testAsyncException(t, cloneCheck.validate(store, {}), 'InvalidRuleError: param.should.be.present(NumberCheck[k:Numkey])')
+  await testAsyncException(t, cloneCheck.validate(store, { Numkey: 42 }), 'InvalidRuleError: param.should.be.present(StrCheck[k:strkey])')
+  await testAsyncException(t, cloneCheck.validate(store, { strkey: 'toto' }), 'InvalidRuleError: param.should.be.present(NumberCheck[k:Numkey])')
+
+  t.plan(24)
   t.end()
 })
 
@@ -201,7 +254,7 @@ test('Checks.Multi full optional', async function (t) {
       Checks.Num('Numkey'),
       Checks.Str('strkey')
     ])
-    , optional = check.optional()
+    , optional = check.clone(x => x.optional())
 
   t.ok('undefined' === typeof await check.validate(store, { Numkey: 42, strkey: 'toto' }))
   t.ok('undefined' === typeof await optional.validate(store, { Numkey: 42, strkey: 'toto' }))
@@ -229,7 +282,7 @@ test('Checks.Multi full absent', async function (t) {
       Checks.Num('Numkey'),
       Checks.Str('strkey')
     ])
-    , absent = check.absent()
+    , absent = check.clone(x => x.absent())
 
   t.ok('undefined' === typeof await check.validate(store, { Numkey: 42, strkey: 'toto' }))
   t.ok('undefined' === typeof await absent.validate(store, { }))

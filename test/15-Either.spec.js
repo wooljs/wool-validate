@@ -36,18 +36,30 @@ test('Checks.Either bad def', async function(t) {
 })
 
 test('Checks.Either same key', async function(t) {
-  let check = Checks.Either('key', [ Checks.Str(), Checks.Num() ])
-    , store = new Store()
+  const store = new Store()
+    , check = Checks.Either('key', [ Checks.Str(), Checks.Num() ])
+    , optionalCheck = check.optional()
+    , absentCheck = check.absent()
+
+  t.deepEqual(check.toFullString(), 'EitherCheck[k:key]')
+  t.deepEqual(optionalCheck.toFullString(), 'EitherCheck[k:key(*)]')
+  t.deepEqual(absentCheck.toFullString(), 'EitherCheck[k:key(!)]')
 
   t.ok('undefined' === typeof await check.validate(store, { key: 'foo' }))
+  t.ok('undefined' === typeof await optionalCheck.validate(store, { key: 'foo' }))
+  t.ok('undefined' === typeof await absentCheck.validate(store, { }))
   t.ok('undefined' === typeof await check.validate(store, { key: 'another' }))
   t.ok('undefined' === typeof await check.validate(store, { key: 42 }))
+  t.ok('undefined' === typeof await optionalCheck.validate(store, { key: 42 }))
 
+  await testAsyncException(t, check.validate(store, { }), 'InvalidRuleError: param.should.be.present(EitherCheck[k:key])')
+  await testAsyncException(t, absentCheck.validate(store, { key: 666 }), 'InvalidRuleError: param.should.be.absent(EitherCheck[k:key])')
   await testAsyncException(t, check.validate(store, { key: true }), 'InvalidRuleError: param.invalid.either.item.no.candidate(EitherCheck[k:key], true)')
   await testAsyncException(t, check.validate(store, { key: null }), 'InvalidRuleError: param.invalid.either.item.no.candidate(EitherCheck[k:key], null)')
+  await testAsyncException(t, optionalCheck.validate(store, { key: null }), 'InvalidRuleError: param.invalid.either.item.no.candidate(EitherCheck[k:key], null)')
   await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.should.be.present(EitherCheck[k:key])')
 
-  t.plan(9)
+  t.plan(21)
   t.end()
 })
 
