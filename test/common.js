@@ -21,7 +21,7 @@ module.exports = {
       t.fail('should throw: ' + m)
     } catch (e) {
       if (IRE) t.ok(e instanceof Checks.InvalidRuleError)
-      if (m instanceof RegExp) t.ok(m.test(e.toString()), s)
+      if (m instanceof RegExp) t.ok(m.test(e.toString()), e.toString()+': '+s)
       else t.deepEqual(e.toString(), m, s)
     }
   }

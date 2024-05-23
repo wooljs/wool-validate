@@ -61,7 +61,7 @@ test('Checks.Struct + Struct', async function (t) {
 
   t.ok('undefined' === typeof await check.validate(store, { key: { str: 'plop', sub: { int: 42, rank: 'S' } } }))
 
-  await testAsyncException(t, check.validate(store, { key: { str: 'plop', sub: { int: -1, rank: 'S' } } }), /^InvalidRuleError: param\.invalid\.struct\.item\(StructCheck\[k:key\], param\.invalid\.struct\.item\(StructCheck\[k:sub\], param\.validation\.error\(NumberCheck\[k:int\], NaN, Error: NaN/, false)
+  await testAsyncException(t, check.validate(store, { key: { str: 'plop', sub: { int: -1, rank: 'S' } } }), /^InvalidRuleError: param\.invalid\.struct\.item\(StructCheck\[k:key\], param\.invalid\.struct\.item\(StructCheck\[k:sub\], param\.validation\.error\(T<IntegerCheck>\[k:int\], NaN, Error: NaN/, false)
 
   await testAsyncException(t, check.validate(store, { key: { str: 'plop', sub: { int: 16, rank: 10 } } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.invalid.struct.item(StructCheck[k:sub], param.invalid.enum(EnumCheck[k:rank], 10)))')
 
@@ -69,6 +69,47 @@ test('Checks.Struct + Struct', async function (t) {
   await testAsyncException(t, check.validate(store, { key: { str: 'plop', sub: { int: 42 } } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.invalid.struct.item(StructCheck[k:sub], param.should.be.present(EnumCheck[k:rank])))')
 
   t.plan(8)
+  t.end()
+})
+
+test('Checks.Struct + Struct .predicate', async function (t) {
+  const store = new Store()
+    , check = Checks.Struct('key', [Checks.Str('str').asNum().asInt(), Checks.Num('int').asInt()])
+      .predicate(({str, int}) => parseFloat(str) === int )
+
+  t.ok('undefined' === typeof await check.validate(store, { key: { str: '42', int: 42 } }))
+
+  await testAsyncException(t, check.validate(store, { key: { str: '12', int: -1 } }), 'InvalidRuleError: param.invalid.predicate(StructCheck[k:key], {"str":"12","int":-1}, ({str, int}) => parseFloat(str) === int)')
+
+  await testAsyncException(t, check.validate(store, { key: { str: 'plop', int: 16 } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.invalid.predicate(StrCheck[k:str], "plop", NumberStrCheck.isNumber()))')
+
+  await testAsyncException(t, check.validate(store, { key: { str: '42' } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.should.be.present(NumberCheck[k:int]))')
+  await testAsyncException(t, check.validate(store, { key: { int: 16 } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.should.be.present(StrCheck[k:str]))')
+  await testAsyncException(t, check.validate(store, { key: { } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.should.be.present(StrCheck[k:str]))')
+
+  t.plan(11)
+  t.end()
+})
+
+test('Checks.Struct + Struct .transform', async function (t) {
+  const store = new Store()
+    , check = Checks.Struct('key', [Checks.Str('str').asNum().asInt(), Checks.Num('int').asInt()])
+      .transform(({str, int}) => parseFloat(str) + int )
+  let p
+
+  t.ok('undefined' === typeof await check.validate(store, p = { key: { str: '42', int: 42 } }))
+  t.deepEqual(p, { key : 84 })
+
+  t.ok('undefined' === typeof await check.validate(store, p = { key: { str: '42', int: -1 } }))
+  t.deepEqual(p, { key : 41 })
+
+  await testAsyncException(t, check.validate(store, { key: { str: 'plop', int: 16 } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.invalid.predicate(StrCheck[k:str], "plop", NumberStrCheck.isNumber()))')
+
+  await testAsyncException(t, check.validate(store, { key: { str: '42' } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.should.be.present(NumberCheck[k:int]))')
+  await testAsyncException(t, check.validate(store, { key: { int: 16 } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.should.be.present(StrCheck[k:str]))')
+  await testAsyncException(t, check.validate(store, { key: { } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.should.be.present(StrCheck[k:str]))')
+
+  t.plan(12)
   t.end()
 })
 

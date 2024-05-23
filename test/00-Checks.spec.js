@@ -61,7 +61,8 @@ test('Checks.Has, present, optional, absent', async function(t) {
   t.deepEqual(aliasCheck.toFullString(), 'ParamCheck[k:plop]')
   t.deepEqual(aliasOptionalCheck.toFullString(), 'ParamCheck[k:plep(*)]')
   t.deepEqual(optionalAliasCheck.toFullString(), 'ParamCheck[k:plip(*)]')
-  t.deepEqual(aliasOptionalTransformPredicateCheck.toFullString(), 'ParamCheck[k:plep(*)](*:x=>x*2)(?:x=>x===42)')
+  t.deepEqual(aliasOptionalTransformPredicateCheck.toFullString(), 'P<T<ParamCheck>>[k:plep(*)](*:x=>x*2)(?:x=>x===42)')
+  t.deepEqual(aliasOptionalTransformPredicateCheck.toDeepString(), 'P<T<ParamCheck>>[k:plep]->T<ParamCheck>[k:plep]->ParamCheck[k:plep]')
 
   t.doesNotEqual(check, presentCheck)
   t.doesNotEqual(check, optionalCheck)
@@ -130,7 +131,7 @@ test('Checks.Has, present, optional, absent', async function(t) {
     t.deepEqual(e.toString(), 'InvalidRuleError: ParamCheck[k:key]')
   }
 
-  t.plan(54)
+  t.plan(55)
   t.end()
 })
 
