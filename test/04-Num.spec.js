@@ -146,22 +146,29 @@ test('Checks.Num.asDate', async function(t) {
 })
 
 test('Checks.Num.min', async function(t) {
-  let check = Checks.Num('key').min(-1.5)
-    , store = new Store()
+  const store = new Store()
+    , check = Checks.Num('key').min(-1.5)
+
+    , optionalCheck = check.optional()
+    , absentCheck = check.absent()
 
   t.ok('undefined' === typeof await check.validate(store, { key: 42 }))
+  t.ok('undefined' === typeof await optionalCheck.validate(store, { key: 42 }))
+  t.ok('undefined' === typeof await optionalCheck.validate(store, { }))
+  t.ok('undefined' === typeof await absentCheck.validate(store, { }))
   t.ok('undefined' === typeof await check.validate(store, { key: 0 }))
   t.ok('undefined' === typeof await check.validate(store, { key: -1 }))
   t.ok('undefined' === typeof await check.validate(store, { key: -1.5 }))
   t.ok('undefined' === typeof await check.validate(store, { key: 3.14159 }))
   t.ok('undefined' === typeof await check.validate(store, { key: 142e12 }))
   await testAsyncException(t, check.validate(store, { key: -1.6 }), 'InvalidRuleError: param.invalid.predicate(NumberCheck[k:key], -1.6, x >= -1.5)')
+  await testAsyncException(t, optionalCheck.validate(store, { key: -1.6 }), 'InvalidRuleError: param.invalid.predicate(NumberCheck[k:key], -1.6, x >= -1.5)')
   await testAsyncException(t, check.validate(store, { key: -666 }), 'InvalidRuleError: param.invalid.predicate(NumberCheck[k:key], -666, x >= -1.5)')
   await testAsyncException(t, check.validate(store, { key: 'foo' }), 'InvalidRuleError: param.invalid.num(NumberCheck[k:key], "foo")')
 
   await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.should.be.present(NumberCheck[k:key])')
 
-  t.plan(14)
+  t.plan(19)
   t.end()
 })
 
