@@ -9,32 +9,30 @@
  * See the License for the specific language governing permissions and limitations under the License.
  */
 
-'use strict'
+import ParamCheck from '../lib/ParamCheck.js'
 
-const ParamCheck = require('../lib/ParamCheck.js')
+import test from 'tape'
+import { Enum, InvalidRuleError, Num, Str, Struct } from '../index.js'
+import { Store } from 'wool-store'
+import { testAsyncException } from './common.js'
 
-const test = require('tape')
-  , Checks = require(__dirname + '/../index.js')
-  , { Store } = require('wool-store')
-  , { testAsyncException } = require('./common.js')
-
-test('Checks.Struct', async function (t) {
+test('Checks Struct', async function (t) {
   const store = new Store()
-    , check = Checks.Struct('key', [Checks.Num('int'), Checks.Str('str'), Checks.Enum('rank', ['S', 'A', 'B'])])
-    , optionalCheck = check.optional()
-    , absentCheck = check.absent()
+  const check = Struct('key', [Num('int'), Str('str'), Enum('rank', ['S', 'A', 'B'])])
+  const optionalCheck = check.optional()
+  const absentCheck = check.absent()
 
   t.deepEqual(check.toFullString(), 'StructCheck[k:key]{ NumberCheck[k:int], StrCheck[k:str], EnumCheck[k:rank] }')
   t.deepEqual(optionalCheck.toFullString(), 'StructCheck[k:key(*)]{ NumberCheck[k:int], StrCheck[k:str], EnumCheck[k:rank] }')
   t.deepEqual(absentCheck.toFullString(), 'StructCheck[k:key(!)]{ NumberCheck[k:int], StrCheck[k:str], EnumCheck[k:rank] }')
 
-  t.ok('undefined' === typeof await check.validate(store, { key: { int: 42, str: 'plop', rank: 'S' } }))
-  t.ok('undefined' === typeof await optionalCheck.validate(store, { key: { int: 42, str: 'plop', rank: 'S' } }))
-  t.ok('undefined' === typeof await optionalCheck.validate(store, { }))
-  t.ok('undefined' === typeof await absentCheck.validate(store, { }))
-  t.ok('undefined' === typeof await check.validate(store, { key: { int: 666, str: 'foobar', rank: 'B' } }))
+  t.ok(typeof await check.validate(store, { key: { int: 42, str: 'plop', rank: 'S' } }) === 'undefined')
+  t.ok(typeof await optionalCheck.validate(store, { key: { int: 42, str: 'plop', rank: 'S' } }) === 'undefined')
+  t.ok(typeof await optionalCheck.validate(store, { }) === 'undefined')
+  t.ok(typeof await absentCheck.validate(store, { }) === 'undefined')
+  t.ok(typeof await check.validate(store, { key: { int: 666, str: 'foobar', rank: 'B' } }) === 'undefined')
 
-  await testAsyncException(t, check.validate(store, {  }), 'InvalidRuleError: param.should.be.present(StructCheck[k:key])')
+  await testAsyncException(t, check.validate(store, { }), 'InvalidRuleError: param.should.be.present(StructCheck[k:key])')
   await testAsyncException(t, absentCheck.validate(store, { key: { int: 42, str: 'plop', rank: 'S' } }), 'InvalidRuleError: param.should.be.absent(StructCheck[k:key])')
   await testAsyncException(t, check.validate(store, { key: { int: 42, str: 'plop', rank: 'K' } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.invalid.enum(EnumCheck[k:rank], "K"))')
   await testAsyncException(t, optionalCheck.validate(store, { key: { int: 42, str: 'plop', rank: 'K' } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.invalid.enum(EnumCheck[k:rank], "K"))')
@@ -54,12 +52,12 @@ test('Checks.Struct', async function (t) {
   t.end()
 })
 
-test('Checks.Struct + Struct', async function (t) {
+test('Checks Struct + Struct', async function (t) {
   const store = new Store()
-    , check = Checks.Struct('key', [Checks.Str('str'), Checks.Struct('sub', [Checks.Num('int').asInt()
-      .transform(x => { let r = Math.sqrt(x); if (isNaN(r)) { throw new Error('NaN') } else return r }), Checks.Enum('rank', ['S', 'A', 'B'])])])
+  const check = Struct('key', [Str('str'), Struct('sub', [Num('int').asInt()
+    .transform(x => { const r = Math.sqrt(x); if (isNaN(r)) { throw new Error('NaN') } else return r }), Enum('rank', ['S', 'A', 'B'])])])
 
-  t.ok('undefined' === typeof await check.validate(store, { key: { str: 'plop', sub: { int: 42, rank: 'S' } } }))
+  t.ok(typeof await check.validate(store, { key: { str: 'plop', sub: { int: 42, rank: 'S' } } }) === 'undefined')
 
   await testAsyncException(t, check.validate(store, { key: { str: 'plop', sub: { int: -1, rank: 'S' } } }), /^InvalidRuleError: param\.invalid\.struct\.item\(StructCheck\[k:key\], param\.invalid\.struct\.item\(StructCheck\[k:sub\], param\.validation\.error\(T<IntegerCheck>\[k:int\], NaN, Error: NaN/, false)
 
@@ -72,14 +70,14 @@ test('Checks.Struct + Struct', async function (t) {
   t.end()
 })
 
-test('Checks.Struct + Struct .predicate', async function (t) {
+test('Checks Struct + Struct .predicate', async function (t) {
   const store = new Store()
-    , check = Checks.Struct('key', [Checks.Str('str').asNum().asInt(), Checks.Num('int').asInt()])
-      .predicate(({str, int}) => parseFloat(str) === int )
+  const check = Struct('key', [Str('str').asNum().asInt(), Num('int').asInt()])
+    .predicate(({ str, int }) => parseFloat(str) === int)
 
-  t.ok('undefined' === typeof await check.validate(store, { key: { str: '42', int: 42 } }))
+  t.ok(typeof await check.validate(store, { key: { str: '42', int: 42 } }) === 'undefined')
 
-  await testAsyncException(t, check.validate(store, { key: { str: '12', int: -1 } }), 'InvalidRuleError: param.invalid.predicate(StructCheck[k:key], {"str":"12","int":-1}, ({str, int}) => parseFloat(str) === int)')
+  await testAsyncException(t, check.validate(store, { key: { str: '12', int: -1 } }), 'InvalidRuleError: param.invalid.predicate(StructCheck[k:key], {"str":"12","int":-1}, ({ str, int }) => parseFloat(str) === int)')
 
   await testAsyncException(t, check.validate(store, { key: { str: 'plop', int: 16 } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.invalid.predicate(StrCheck[k:str], "plop", NumberStrCheck.isNumber()))')
 
@@ -91,17 +89,17 @@ test('Checks.Struct + Struct .predicate', async function (t) {
   t.end()
 })
 
-test('Checks.Struct + Struct .transform', async function (t) {
+test('Checks Struct + Struct .transform', async function (t) {
   const store = new Store()
-    , check = Checks.Struct('key', [Checks.Str('str').asNum().asInt(), Checks.Num('int').asInt()])
-      .transform(({str, int}) => parseFloat(str) + int )
+  const check = Struct('key', [Str('str').asNum().asInt(), Num('int').asInt()])
+    .transform(({ str, int }) => parseFloat(str) + int)
   let p
 
-  t.ok('undefined' === typeof await check.validate(store, p = { key: { str: '42', int: 42 } }))
-  t.deepEqual(p, { key : 84 })
+  t.ok(typeof await check.validate(store, p = { key: { str: '42', int: 42 } }) === 'undefined')
+  t.deepEqual(p, { key: 84 })
 
-  t.ok('undefined' === typeof await check.validate(store, p = { key: { str: '42', int: -1 } }))
-  t.deepEqual(p, { key : 41 })
+  t.ok(typeof await check.validate(store, p = { key: { str: '42', int: -1 } }) === 'undefined')
+  t.deepEqual(p, { key: 41 })
 
   await testAsyncException(t, check.validate(store, { key: { str: 'plop', int: 16 } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.invalid.predicate(StrCheck[k:str], "plop", NumberStrCheck.isNumber()))')
 
@@ -113,42 +111,42 @@ test('Checks.Struct + Struct .transform', async function (t) {
   t.end()
 })
 
-test('Checks.Struct + Unknow Error', async function (t) {
+test('Checks Struct + Unknow Error', async function (t) {
   class UnknowErrorCheck extends ParamCheck {
-    validate() { throw new Error('Unknown Error') }
+    validate () { throw new Error('Unknown Error') }
   }
 
   const store = new Store()
-    , check = Checks.Struct('key', [Checks.Str('str'), new UnknowErrorCheck('foo') ])
+  const check = Struct('key', [Str('str'), new UnknowErrorCheck('foo')])
 
-  await testAsyncException(t, check.validate(store, { key: { str: 'plop', foo: 'plop' }}), /InvalidRuleError: param.validation.error\(StructCheck\[k:key\], Unknown Error, Error: Unknown Error/, false)
+  await testAsyncException(t, check.validate(store, { key: { str: 'plop', foo: 'plop' } }), /InvalidRuleError: param.validation.error\(StructCheck\[k:key\], Unknown Error, Error: Unknown Error/, false)
 
   t.plan(1)
   t.end()
 })
 
-test('Checks.Struct + deep Struct optional/absent', async function (t) {
+test('Checks Struct + deep Struct optional/absent', async function (t) {
   const store = new Store()
-    , str = Checks.Str('str')
-    , check = Checks.Struct('key', [str, Checks.Struct('opt', [str.optional(), Checks.Num('int').asInt()]), Checks.Struct('abs', [str.absent(), Checks.Num('int').asInt()])])
+  const str = Str('str')
+  const check = Struct('key', [str, Struct('opt', [str.optional(), Num('int').asInt()]), Struct('abs', [str.absent(), Num('int').asInt()])])
 
   t.deepEqual(check.toFullString(), 'StructCheck[k:key]{ StrCheck[k:str], StructCheck[k:opt]{ StrCheck[k:str(*)], IntegerCheck[k:int](?:Number.isInteger()) }, StructCheck[k:abs]{ StrCheck[k:str(!)], IntegerCheck[k:int](?:Number.isInteger()) } }')
 
-  t.ok('undefined' === typeof await check.validate(store, { key: { str: 'plop', opt: { str: 'xx', int: 42 }, abs: { int: 666} }}))
-  t.ok('undefined' === typeof await check.validate(store, { key: { str: 'plop', opt: { int: 42 }, abs: { int: 666} }}))
+  t.ok(typeof await check.validate(store, { key: { str: 'plop', opt: { str: 'xx', int: 42 }, abs: { int: 666 } } }) === 'undefined')
+  t.ok(typeof await check.validate(store, { key: { str: 'plop', opt: { int: 42 }, abs: { int: 666 } } }) === 'undefined')
 
-  await testAsyncException(t, check.validate(store, { key: { str: 'plop', opt: { str: 'foo', int: 17 }, abs: { str: 'bar', int: 9536 }  } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.invalid.struct.item(StructCheck[k:abs], param.should.be.absent(StrCheck[k:str])))')
+  await testAsyncException(t, check.validate(store, { key: { str: 'plop', opt: { str: 'foo', int: 17 }, abs: { str: 'bar', int: 9536 } } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.invalid.struct.item(StructCheck[k:abs], param.should.be.absent(StrCheck[k:str])))')
 
   t.plan(5)
   t.end()
 })
 
-test('Checks.Struct bad def', async function (t) {
+test('Checks Struct bad def', async function (t) {
   try {
-    Checks.Struct('key', [])
+    Struct('key', [])
     t.fail('should have failed')
   } catch (e) {
-    t.ok(e instanceof Checks.InvalidRuleError)
+    t.ok(e instanceof InvalidRuleError)
     t.deepEqual(e.toString(), 'InvalidRuleError: param.invalid.struct.build.no.definitions(StructCheck[k:key])')
   }
 

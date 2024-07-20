@@ -9,17 +9,13 @@
  * See the License for the specific language governing permissions and limitations under the License.
  */
 
-'use strict'
+import test from 'tape'
+import { Id, InvalidRuleError, ParamCheck } from '../index.js'
+import { Store } from 'wool-store'
 
-const test = require('tape')
-  , Checks = require(__dirname + '/../index.js')
-  , { Store } = require('wool-store')
-//, { testAsyncException } = require('./common.js')
-
-test('Checks.Id', async function (t) {
+test('Checks Id', async function (t) {
   const store = new Store()
-    , check = Checks.Id('id')
-
+  const check = Id('id')
 
   t.deepEqual(check.toFullString(), 'ValidId[k:id]')
 
@@ -27,7 +23,7 @@ test('Checks.Id', async function (t) {
     check.absent(true)
     t.fail('should throw')
   } catch (e) {
-    t.ok(e instanceof Checks.InvalidRuleError)
+    t.ok(e instanceof InvalidRuleError)
     t.deepEqual(e.toString(), 'InvalidRuleError: param.cannot.be.absent.and.in.store(ValidId[k:id])')
   }
 
@@ -35,23 +31,23 @@ test('Checks.Id', async function (t) {
     check.default('plop')
     t.fail('should throw')
   } catch (e) {
-    t.ok(e instanceof Checks.InvalidRuleError)
+    t.ok(e instanceof InvalidRuleError)
     t.deepEqual(e.toString(), 'InvalidRuleError: param.cannot.have.default(ValidId[k:id])')
   }
 
   await store.set('42', { id: '42', foo: 'bar' })
-  t.ok('undefined' === typeof await check.validate(store, { id: '42', foo: true }))
+  t.ok(typeof await check.validate(store, { id: '42', foo: true }) === 'undefined')
   t.ok(check.isOne('42'))
 
   t.plan(7)
   t.end()
 })
 
-test('Checks.Id prefix', async function (t) {
+test('Checks Id prefix', async function (t) {
   const store = new Store()
-    , check = Checks.Id('id', { prefix: 'test: ' })
-    , optionalCheck = check.optional()
-    , absentNoCheck = check.absent()
+  const check = Id('id', { prefix: 'test: ' })
+  const optionalCheck = check.optional()
+  const absentNoCheck = check.absent()
 
   t.deepEqual(check.toFullString(), 'ValidId[k:id]')
   t.deepEqual(optionalCheck.toFullString(), 'ValidId[k:id(*)]')
@@ -59,37 +55,37 @@ test('Checks.Id prefix', async function (t) {
 
   await store.set('test: 42', { id: '42', foo: 'bar' })
 
-  t.ok('undefined' === typeof await check.validate(store, { id: '42' }))
-  t.ok('undefined' === typeof await optionalCheck.validate(store, { id: '42' }))
-  t.ok('undefined' === typeof await optionalCheck.validate(store, { }))
-  t.ok('undefined' === typeof await optionalCheck.validate(store, { foo: true  }))
-  t.ok('undefined' === typeof await absentNoCheck.validate(store, { }))
+  t.ok(typeof await check.validate(store, { id: '42' }) === 'undefined')
+  t.ok(typeof await optionalCheck.validate(store, { id: '42' }) === 'undefined')
+  t.ok(typeof await optionalCheck.validate(store, { }) === 'undefined')
+  t.ok(typeof await optionalCheck.validate(store, { foo: true }) === 'undefined')
+  t.ok(typeof await absentNoCheck.validate(store, { }) === 'undefined')
 
   await check.validate(store, { id: '666' })
     .then(() => t.fail('should throw'))
     .catch(e => {
-      t.ok(e instanceof Checks.InvalidRuleError)
+      t.ok(e instanceof InvalidRuleError)
       t.deepEqual(e.toString(), 'InvalidRuleError: param.should.exists.in.store(ValidId[k:id], 666)')
     })
 
   await absentNoCheck.validate(store, { id: '42' })
     .then(() => t.fail('should throw'))
     .catch(e => {
-      t.ok(e instanceof Checks.InvalidRuleError)
+      t.ok(e instanceof InvalidRuleError)
       t.deepEqual(e.toString(), 'InvalidRuleError: param.should.be.absent(ValidId[k:id])')
     })
 
   await optionalCheck.validate(store, { id: '666' })
     .then(() => t.fail('should throw'))
     .catch(e => {
-      t.ok(e instanceof Checks.InvalidRuleError)
+      t.ok(e instanceof InvalidRuleError)
       t.deepEqual(e.toString(), 'InvalidRuleError: param.should.exists.in.store(ValidId[k:id], 666)')
     })
 
   await check.validate(store, { foo: true })
     .then(() => t.fail('should throw'))
     .catch(e => {
-      t.ok(e instanceof Checks.InvalidRuleError)
+      t.ok(e instanceof InvalidRuleError)
       t.deepEqual(e.toString(), 'InvalidRuleError: param.should.be.present(ValidId[k:id])')
     })
 
@@ -102,9 +98,9 @@ test('Checks.Id prefix', async function (t) {
   t.end()
 })
 
-test('Checks.Id alias', async function (t) {
+test('Checks Id alias', async function (t) {
   const store = new Store()
-    , check = Checks.Id('id', { prefix: 'test: ' }).alias('foobar')
+  const check = Id('id', { prefix: 'test: ' }).alias('foobar')
 
   t.deepEqual(check.toFullString(), 'ValidId[k:foobar]')
 
@@ -112,7 +108,7 @@ test('Checks.Id alias', async function (t) {
     check.absent(true)
     t.fail('should throw')
   } catch (e) {
-    t.ok(e instanceof Checks.InvalidRuleError)
+    t.ok(e instanceof InvalidRuleError)
     t.deepEqual(e.toString(), 'InvalidRuleError: param.cannot.be.absent.and.in.store(ValidId[k:foobar])')
   }
 
@@ -120,32 +116,32 @@ test('Checks.Id alias', async function (t) {
     check.default('plop')
     t.fail('should throw')
   } catch (e) {
-    t.ok(e instanceof Checks.InvalidRuleError)
+    t.ok(e instanceof InvalidRuleError)
     t.deepEqual(e.toString(), 'InvalidRuleError: param.cannot.have.default(ValidId[k:foobar])')
   }
 
   await store.set('test: 42', { id: '42', foo: 'bar' })
 
-  t.ok('undefined' === typeof await check.validate(store, { foobar: '42' }))
+  t.ok(typeof await check.validate(store, { foobar: '42' }) === 'undefined')
 
   await check.validate(store, { id: '42' })
     .then(() => t.fail('should throw'))
     .catch(e => {
-      t.ok(e instanceof Checks.InvalidRuleError)
+      t.ok(e instanceof InvalidRuleError)
       t.deepEqual(e.toString(), 'InvalidRuleError: param.should.be.present(ValidId[k:foobar])')
     })
 
   await check.validate(store, { foobar: '666' })
     .then(() => t.fail('should throw'))
     .catch(e => {
-      t.ok(e instanceof Checks.InvalidRuleError)
+      t.ok(e instanceof InvalidRuleError)
       t.deepEqual(e.toString(), 'InvalidRuleError: param.should.exists.in.store(ValidId[k:foobar], 666)')
     })
 
   await check.validate(store, { foo: true })
     .then(() => t.fail('should throw'))
     .catch(e => {
-      t.ok(e instanceof Checks.InvalidRuleError)
+      t.ok(e instanceof InvalidRuleError)
       t.deepEqual(e.toString(), 'InvalidRuleError: param.should.be.present(ValidId[k:foobar])')
     })
 
@@ -158,33 +154,32 @@ test('Checks.Id alias', async function (t) {
   t.end()
 })
 
-
-test('Checks.Id.asNew()', async function (t) {
+test('Checks Id.asNew()', async function (t) {
   const store = new Store()
-    , check = Checks.Id('id', { prefix: 'test: ' }).asNew()
-    , d = new Date()
+  const check = Id('id', { prefix: 'test: ' }).asNew()
+  const d = new Date()
   let p
 
   t.deepEqual(check.toFullString(), 'NotExistsId[k:id]')
 
-  t.ok('undefined' === typeof await check.validate(store, p = { foo: true }, d))
+  t.ok(typeof await check.validate(store, p = { foo: true }, d) === 'undefined')
   t.ok('id' in p)
   t.deepEqual(p.id, '0' + d.getTime().toString(16) + '0000')
-  t.ok('undefined' === typeof await check.validate(store, p = { foo: true }, d))
+  t.ok(typeof await check.validate(store, p = { foo: true }, d) === 'undefined')
   t.ok('id' in p)
   t.deepEqual(p.id, '0' + d.getTime().toString(16) + '0001')
-  t.ok('undefined' === typeof await check.validate(store, p = { foo: true }))
+  t.ok(typeof await check.validate(store, p = { foo: true }) === 'undefined')
   t.ok('id' in p)
   t.ok(/^test: /.test(check.as(p.id)))
   t.plan(10)
   t.end()
 })
 
-test('Checks.Id.asNew() algo', async function (t) {
+test('Checks Id.asNew() algo', async function (t) {
   const store = new Store()
-    , algo = () => '42'
-    , check = Checks.Id('id', { prefix: 'test: ', algo }).asNew()
-    , d = new Date()
+  const algo = () => '42'
+  const check = Id('id', { prefix: 'test: ', algo }).asNew()
+  const d = new Date()
   let p
 
   t.deepEqual(check.toFullString(), 'NotExistsId[k:id]')
@@ -193,7 +188,7 @@ test('Checks.Id.asNew() algo', async function (t) {
     check.present()
     t.fail('should throw')
   } catch (e) {
-    t.ok(e instanceof Checks.InvalidRuleError)
+    t.ok(e instanceof InvalidRuleError)
     t.deepEqual(e.toString(), 'InvalidRuleError: param.cannot.be.present(NotExistsId[k:id])')
   }
 
@@ -201,7 +196,7 @@ test('Checks.Id.asNew() algo', async function (t) {
     check.optional()
     t.fail('should throw')
   } catch (e) {
-    t.ok(e instanceof Checks.InvalidRuleError)
+    t.ok(e instanceof InvalidRuleError)
     t.deepEqual(e.toString(), 'InvalidRuleError: param.cannot.be.optional(NotExistsId[k:id])')
   }
 
@@ -209,7 +204,7 @@ test('Checks.Id.asNew() algo', async function (t) {
     check.absent()
     t.fail('should throw')
   } catch (e) {
-    t.ok(e instanceof Checks.InvalidRuleError)
+    t.ok(e instanceof InvalidRuleError)
     t.deepEqual(e.toString(), 'InvalidRuleError: param.is.already.absent(NotExistsId[k:id])')
   }
 
@@ -217,7 +212,7 @@ test('Checks.Id.asNew() algo', async function (t) {
     check.absent(true)
     t.fail('should throw')
   } catch (e) {
-    t.ok(e instanceof Checks.InvalidRuleError)
+    t.ok(e instanceof InvalidRuleError)
     t.deepEqual(e.toString(), 'InvalidRuleError: param.is.already.absent(NotExistsId[k:id])')
   }
 
@@ -225,13 +220,13 @@ test('Checks.Id.asNew() algo', async function (t) {
     check.default('plop')
     t.fail('should throw')
   } catch (e) {
-    t.ok(e instanceof Checks.InvalidRuleError)
+    t.ok(e instanceof InvalidRuleError)
     t.deepEqual(e.toString(), 'InvalidRuleError: param.cannot.have.default(NotExistsId[k:id])')
   }
 
-  t.ok('undefined' === typeof await check.validate(store, { foo: true }))
+  t.ok(typeof await check.validate(store, { foo: true }) === 'undefined')
 
-  t.ok('undefined' === typeof await check.validate(store, p = { foo: true }, d))
+  t.ok(typeof await check.validate(store, p = { foo: true }, d) === 'undefined')
   t.ok('id' in p)
   t.deepEqual(p.id, '42')
 
@@ -240,36 +235,36 @@ test('Checks.Id.asNew() algo', async function (t) {
   await check.validate(store, { foo: true })
     .then(() => t.fail('should throw'))
     .catch(e => {
-      t.ok(e instanceof Checks.InvalidRuleError)
+      t.ok(e instanceof InvalidRuleError)
       t.deepEqual(e.toString(), 'InvalidRuleError: param.should.not.be.in.store(NotExistsId[k:id], 42)')
     })
 
   await check.validate(store, { id: '42' })
     .then(() => t.fail('should throw'))
     .catch(e => {
-      t.ok(e instanceof Checks.InvalidRuleError)
+      t.ok(e instanceof InvalidRuleError)
       t.deepEqual(e.toString(), 'InvalidRuleError: param.should.be.absent(NotExistsId[k:id])')
     })
 
   await check.validate(store, { id: '666' })
     .then(() => t.fail('should throw'))
     .catch(e => {
-      t.ok(e instanceof Checks.InvalidRuleError)
+      t.ok(e instanceof InvalidRuleError)
       t.deepEqual(e.toString(), 'InvalidRuleError: param.should.be.absent(NotExistsId[k:id])')
     })
 
-  t.equal(check.presence, Checks.ParamCheck.Presence.absent)
+  t.equal(check.presence, ParamCheck.Presence.absent)
 
   t.plan(22)
   t.end()
 })
 
-test('Checks.Id.notInStore()', async function (t) {
+test('Checks Id.notInStore()', async function (t) {
   const store = new Store()
-    , check = Checks.Id('id', { prefix: 'foo: ' }).notInStore()
-    , optionalCheck = check.optional()
-    , absentNoCheck = check.absent()
-    , d = new Date()
+  const check = Id('id', { prefix: 'foo: ' }).notInStore()
+  const optionalCheck = check.optional()
+  const absentNoCheck = check.absent()
+  const d = new Date()
   let p
 
   t.deepEqual(check.toFullString(), 'NotInStoreId[k:id]')
@@ -278,7 +273,7 @@ test('Checks.Id.notInStore()', async function (t) {
     check.absent(true)
     t.fail('should throw')
   } catch (e) {
-    t.ok(e instanceof Checks.InvalidRuleError)
+    t.ok(e instanceof InvalidRuleError)
     t.deepEqual(e.toString(), 'InvalidRuleError: param.cannot.be.absent.and.not.in.store(NotInStoreId[k:id])')
   }
 
@@ -286,54 +281,53 @@ test('Checks.Id.notInStore()', async function (t) {
     check.default('plop')
     t.fail('should throw')
   } catch (e) {
-    t.ok(e instanceof Checks.InvalidRuleError)
+    t.ok(e instanceof InvalidRuleError)
     t.deepEqual(e.toString(), 'InvalidRuleError: param.cannot.have.default(NotInStoreId[k:id])')
   }
 
-  t.ok('undefined' === typeof await check.validate(store, p = { id: '42', foo: true }, d))
+  t.ok(typeof await check.validate(store, p = { id: '42', foo: true }, d) === 'undefined')
   t.ok('id' in p)
   t.deepEqual(p.id, '42')
 
-
-  t.ok('undefined' === typeof await check.validate(store, { id: '42' }))
-  t.ok('undefined' === typeof await optionalCheck.validate(store, { id: '42' }))
-  t.ok('undefined' === typeof await optionalCheck.validate(store, { }))
-  t.ok('undefined' === typeof await optionalCheck.validate(store, { foo: true  }))
-  t.ok('undefined' === typeof await absentNoCheck.validate(store, { }))
+  t.ok(typeof await check.validate(store, { id: '42' }) === 'undefined')
+  t.ok(typeof await optionalCheck.validate(store, { id: '42' }) === 'undefined')
+  t.ok(typeof await optionalCheck.validate(store, { }) === 'undefined')
+  t.ok(typeof await optionalCheck.validate(store, { foo: true }) === 'undefined')
+  t.ok(typeof await absentNoCheck.validate(store, { }) === 'undefined')
 
   await store.set('foo: 42', { id: '42', foo: 'bar' })
 
-  t.ok('undefined' === typeof await check.validate(store, p = { id: '666', foo: true }, d))
+  t.ok(typeof await check.validate(store, p = { id: '666', foo: true }, d) === 'undefined')
   t.ok('id' in p)
   t.deepEqual(p.id, '666')
 
-  t.ok('undefined' === typeof await optionalCheck.validate(store, { id: '666' }))
+  t.ok(typeof await optionalCheck.validate(store, { id: '666' }) === 'undefined')
 
   await check.validate(store, { id: '42' })
     .then(() => t.fail('should throw'))
     .catch(e => {
-      t.ok(e instanceof Checks.InvalidRuleError)
+      t.ok(e instanceof InvalidRuleError)
       t.deepEqual(e.toString(), 'InvalidRuleError: param.should.not.be.in.store(NotInStoreId[k:id], 42)')
     })
 
   await optionalCheck.validate(store, { id: '42' })
     .then(() => t.fail('should throw'))
     .catch(e => {
-      t.ok(e instanceof Checks.InvalidRuleError)
+      t.ok(e instanceof InvalidRuleError)
       t.deepEqual(e.toString(), 'InvalidRuleError: param.should.not.be.in.store(NotInStoreId[k:id], 42)')
     })
 
   await absentNoCheck.validate(store, { id: '42' })
     .then(() => t.fail('should throw'))
     .catch(e => {
-      t.ok(e instanceof Checks.InvalidRuleError)
+      t.ok(e instanceof InvalidRuleError)
       t.deepEqual(e.toString(), 'InvalidRuleError: param.should.be.absent(NotInStoreId[k:id])')
     })
 
   await check.validate(store, { foo: true })
     .then(() => t.fail('should throw'))
     .catch(e => {
-      t.ok(e instanceof Checks.InvalidRuleError)
+      t.ok(e instanceof InvalidRuleError)
       t.deepEqual(e.toString(), 'InvalidRuleError: param.should.be.present(NotInStoreId[k:id])')
     })
 
@@ -341,12 +335,12 @@ test('Checks.Id.notInStore()', async function (t) {
   t.end()
 })
 
-test('Checks.Id.noCheck()', async function (t) {
+test('Checks Id.noCheck()', async function (t) {
   const store = new Store()
-    , check = Checks.Id('id', { prefix: 'foo: ' }).noCheck()
-    , absentNoCheck = check.absent()
-    , absentWithCheck = check.absent(true)
-    , d = new Date()
+  const check = Id('id', { prefix: 'foo: ' }).noCheck()
+  const absentNoCheck = check.absent()
+  const absentWithCheck = check.absent(true)
+  const d = new Date()
   let p
 
   t.deepEqual(check.toFullString(), 'NoCheckId[k:id]')
@@ -354,16 +348,16 @@ test('Checks.Id.noCheck()', async function (t) {
   await check.validate(store, { foo: true })
     .then(() => t.fail('should throw'))
     .catch(e => {
-      t.ok(e instanceof Checks.InvalidRuleError)
+      t.ok(e instanceof InvalidRuleError)
       t.deepEqual(e.toString(), 'InvalidRuleError: param.should.be.present(NoCheckId[k:id])')
     })
 
-  t.ok('undefined' === typeof await check.validate(store, p = { id: '42', foo: true }, d))
+  t.ok(typeof await check.validate(store, p = { id: '42', foo: true }, d) === 'undefined')
   t.ok('id' in p)
   t.deepEqual(p.id, '42')
 
-  t.ok('undefined' === typeof await absentNoCheck.validate(store, {}, d))
-  t.ok('undefined' === typeof await absentWithCheck.validate(store, {}, d))
+  t.ok(typeof await absentNoCheck.validate(store, {}, d) === 'undefined')
+  t.ok(typeof await absentWithCheck.validate(store, {}, d) === 'undefined')
 
   t.plan(8)
   t.end()

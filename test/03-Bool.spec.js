@@ -9,39 +9,37 @@
  * See the License for the specific language governing permissions and limitations under the License.
  */
 
-'use strict'
+import test from 'tape'
+import { Bool } from '../index.js'
+import { Store } from 'wool-store'
+import { testAsyncException } from './common.js'
 
-const test = require('tape')
-  , Checks = require(__dirname + '/../index.js')
-  , { Store } = require('wool-store')
-  , { testAsyncException } = require('./common.js')
-
-test('Checks.Bool', async function(t) {
+test('Checks Bool', async function (t) {
   const store = new Store()
-    , check = Checks.Bool('key')
-    , optionalCheck = check.optional()
-    , absentCheck = check.absent()
-    , defaultCheck = check.default(true)
+  const check = Bool('key')
+  const optionalCheck = check.optional()
+  const absentCheck = check.absent()
+  const defaultCheck = check.default(true)
 
   t.deepEqual(check.toFullString(), 'BoolCheck[k:key]')
   t.deepEqual(absentCheck.toFullString(), 'BoolCheck[k:key(!)]')
   t.deepEqual(optionalCheck.toFullString(), 'BoolCheck[k:key(*)]')
   t.deepEqual(defaultCheck.toFullString(), 'BoolCheck[k:key(=true)]')
 
-  t.ok('undefined' === typeof await check.validate(store, { key: true }))
-  t.ok('undefined' === typeof await check.validate(store, { key: false }))
+  t.ok(typeof await check.validate(store, { key: true }) === 'undefined')
+  t.ok(typeof await check.validate(store, { key: false }) === 'undefined')
 
-  t.ok('undefined' === typeof await optionalCheck.validate(store, { key: true }))
-  t.ok('undefined' === typeof await optionalCheck.validate(store, { key: false }))
-  t.ok('undefined' === typeof await optionalCheck.validate(store, { }))
+  t.ok(typeof await optionalCheck.validate(store, { key: true }) === 'undefined')
+  t.ok(typeof await optionalCheck.validate(store, { key: false }) === 'undefined')
+  t.ok(typeof await optionalCheck.validate(store, { }) === 'undefined')
 
-  t.ok('undefined' === typeof await absentCheck.validate(store, { }))
+  t.ok(typeof await absentCheck.validate(store, { }) === 'undefined')
 
-  t.ok('undefined' === typeof await defaultCheck.validate(store, { key: true }))
-  t.ok('undefined' === typeof await defaultCheck.validate(store, { key: false }))
+  t.ok(typeof await defaultCheck.validate(store, { key: true }) === 'undefined')
+  t.ok(typeof await defaultCheck.validate(store, { key: false }) === 'undefined')
 
-  let o = { }
-  t.ok('undefined' === typeof await defaultCheck.validate(store, o))
+  const o = { }
+  t.ok(typeof await defaultCheck.validate(store, o) === 'undefined')
   t.deepEqual(o, { key: true })
 
   await testAsyncException(t, absentCheck.validate(store, { key: true }), 'InvalidRuleError: param.should.be.absent(BoolCheck[k:key])')
@@ -56,14 +54,14 @@ test('Checks.Bool', async function(t) {
   t.end()
 })
 
-test('Checks.Bool.predicate', async function(t) {
-  let check = Checks.Bool('key').predicate(async(x, store) => x && await store.has('key'))
-    , store = new Store()
+test('Checks Bool.predicate', async function (t) {
+  const check = Bool('key').predicate(async (x, store) => x && await store.has('key'))
+  const store = new Store()
 
   await store.set('key', 'plop')
 
-  t.ok('undefined' === typeof await check.validate(store, { key: true }))
-  await testAsyncException(t, check.validate(store, { key: false }), 'InvalidRuleError: param.invalid.predicate(BoolCheck[k:key], false, async(x, store) => x && await store.has(\'key\'))')
+  t.ok(typeof await check.validate(store, { key: true }) === 'undefined')
+  await testAsyncException(t, check.validate(store, { key: false }), 'InvalidRuleError: param.invalid.predicate(BoolCheck[k:key], false, async (x, store) => x && await store.has(\'key\'))')
   await testAsyncException(t, check.validate(store, { key: 'foo' }), 'InvalidRuleError: param.invalid.bool(BoolCheck[k:key], foo)')
 
   await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.should.be.present(BoolCheck[k:key])')

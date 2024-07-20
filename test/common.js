@@ -9,20 +9,16 @@
  * See the License for the specific language governing permissions and limitations under the License.
  */
 
-'use strict'
+import { InvalidRuleError } from '../index.js'
 
-const Checks = require(__dirname + '/../index.js')
-
-module.exports = {
-  async testAsyncException(t, r, m, IRE = true) {
-    const s = new Error().stack
-    try {
-      await r
-      t.fail('should throw: ' + m)
-    } catch (e) {
-      if (IRE) t.ok(e instanceof Checks.InvalidRuleError)
-      if (m instanceof RegExp) t.ok(m.test(e.toString()), e.toString()+': '+s)
-      else t.deepEqual(e.toString(), m, s)
-    }
+export const testAsyncException = async (t, r, m, IRE = true) => {
+  const s = new Error().stack
+  try {
+    await r
+    t.fail('should throw: ' + m)
+  } catch (e) {
+    if (IRE) t.ok(e instanceof InvalidRuleError)
+    if (m instanceof RegExp) t.ok(m.test(e.toString()), e.toString() + ': ' + s)
+    else t.deepEqual(e.toString(), m, s)
   }
 }

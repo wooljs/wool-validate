@@ -9,40 +9,38 @@
  * See the License for the specific language governing permissions and limitations under the License.
  */
 
-'use strict'
+import test from 'tape'
+import { InvalidRuleError } from '../index.js'
 
-const test = require('tape')
-  , Checks = require(__dirname + '/../index.js')
-
-test('Checks.InvalidRuleError', async function(t) {
+test('Checks InvalidRuleError', async function (t) {
   try {
-    throw new Checks.InvalidRuleError()
-  } catch(e) {
-    t.ok(e instanceof Checks.InvalidRuleError)
+    throw new InvalidRuleError()
+  } catch (e) {
+    t.ok(e instanceof InvalidRuleError)
     t.deepEqual(e.toString(), 'InvalidRuleError: undefined')
   }
   try {
-    throw new Checks.InvalidRuleError('x')
-  } catch(e) {
-    t.ok(e instanceof Checks.InvalidRuleError)
+    throw new InvalidRuleError('x')
+  } catch (e) {
+    t.ok(e instanceof InvalidRuleError)
     t.deepEqual(e.toString(), 'InvalidRuleError: x')
   }
   try {
-    throw new Checks.InvalidRuleError('x', '')
-  } catch(e) {
-    t.ok(e instanceof Checks.InvalidRuleError)
+    throw new InvalidRuleError('x', '')
+  } catch (e) {
+    t.ok(e instanceof InvalidRuleError)
     t.deepEqual(e.toString(), 'InvalidRuleError: x()')
   }
   try {
-    throw new Checks.InvalidRuleError('', '')
-  } catch(e) {
-    t.ok(e instanceof Checks.InvalidRuleError)
+    throw new InvalidRuleError('', '')
+  } catch (e) {
+    t.ok(e instanceof InvalidRuleError)
     t.deepEqual(e.toString(), 'InvalidRuleError: ()')
   }
   try {
-    throw new Checks.InvalidRuleError('', '', '')
-  } catch(e) {
-    t.ok(e instanceof Checks.InvalidRuleError)
+    throw new InvalidRuleError('', '', '')
+  } catch (e) {
+    t.ok(e instanceof InvalidRuleError)
     t.deepEqual(e.toString(), 'InvalidRuleError: (, )')
   }
   t.plan(10)

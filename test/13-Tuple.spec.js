@@ -9,31 +9,29 @@
  * See the License for the specific language governing permissions and limitations under the License.
  */
 
-'use strict'
+import test from 'tape'
+import { Bool, Enum, InvalidRuleError, Num, Str, Tuple } from '../index.js'
+import { Store } from 'wool-store'
+import { testAsyncException } from './common.js'
 
-const test = require('tape')
-  , Checks = require(__dirname + '/../index.js')
-  , { Store } = require('wool-store')
-  , { testAsyncException } = require('./common.js')
-
-test('Checks.Tuple Str Num', async function (t) {
+test('Checks Tuple Str Num', async function (t) {
   const store = new Store()
-    , check = Checks.Tuple('key', [
-      Checks.Str().regex(/^[a-z]+$/),
-      Checks.Num().asInt()
-    ])
-    , optionalCheck = check.optional()
-    , absentCheck = check.absent()
+  const check = Tuple('key', [
+    Str().regex(/^[a-z]+$/),
+    Num().asInt()
+  ])
+  const optionalCheck = check.optional()
+  const absentCheck = check.absent()
 
   t.deepEqual(check.toFullString(), 'TupleCheck[k:key]{ RegexCheck[](?:/^[a-z]+$/), IntegerCheck[](?:Number.isInteger()) }')
   t.deepEqual(optionalCheck.toFullString(), 'TupleCheck[k:key(*)]{ RegexCheck[](?:/^[a-z]+$/), IntegerCheck[](?:Number.isInteger()) }')
   t.deepEqual(absentCheck.toFullString(), 'TupleCheck[k:key(!)]{ RegexCheck[](?:/^[a-z]+$/), IntegerCheck[](?:Number.isInteger()) }')
 
-  t.ok('undefined' === typeof await check.validate(store, { key: ['plop', 42] }))
-  t.ok('undefined' === typeof await optionalCheck.validate(store, { key: ['plop', 42] }))
-  t.ok('undefined' === typeof await optionalCheck.validate(store, { }))
-  t.ok('undefined' === typeof await absentCheck.validate(store, {  }))
-  t.ok('undefined' === typeof await check.validate(store, { key: ['bar', -1e10] }))
+  t.ok(typeof await check.validate(store, { key: ['plop', 42] }) === 'undefined')
+  t.ok(typeof await optionalCheck.validate(store, { key: ['plop', 42] }) === 'undefined')
+  t.ok(typeof await optionalCheck.validate(store, { }) === 'undefined')
+  t.ok(typeof await absentCheck.validate(store, { }) === 'undefined')
+  t.ok(typeof await check.validate(store, { key: ['bar', -1e10] }) === 'undefined')
   await testAsyncException(t, check.validate(store, { }), 'InvalidRuleError: param.should.be.present(TupleCheck[k:key])')
   await testAsyncException(t, absentCheck.validate(store, { key: ['plop', 42] }), 'InvalidRuleError: param.should.be.absent(TupleCheck[k:key])')
   await testAsyncException(t, check.validate(store, { key: ['foo', 3.14159] }), 'InvalidRuleError: param.invalid.tuple.item.at(TupleCheck[k:key], 1, param.invalid.predicate(NumberCheck[], 3.14159, Number.isInteger()))')
@@ -55,16 +53,16 @@ test('Checks.Tuple Str Num', async function (t) {
   t.end()
 })
 
-test('Checks.Tuple Str Num predicate', async function (t) {
+test('Checks Tuple Str Num predicate', async function (t) {
   const store = new Store()
-    , check = Checks.Tuple('key', [
-      Checks.Str().regex(/^[a-z]+$/),
-      Checks.Num().asInt()
-        .transform(x => { let r = Math.sqrt(x); if (isNaN(r)) { throw new Error('NaN') } else return r })
-    ]).predicate(([a, b]) => a.length === b)
+  const check = Tuple('key', [
+    Str().regex(/^[a-z]+$/),
+    Num().asInt()
+      .transform(x => { const r = Math.sqrt(x); if (isNaN(r)) { throw new Error('NaN') } else return r })
+  ]).predicate(([a, b]) => a.length === b)
 
-  t.ok('undefined' === typeof await check.validate(store, { key: ['plop', 4] }))
-  t.ok('undefined' === typeof await check.validate(store, { key: ['bar', 3] }))
+  t.ok(typeof await check.validate(store, { key: ['plop', 4] }) === 'undefined')
+  t.ok(typeof await check.validate(store, { key: ['bar', 3] }) === 'undefined')
   await testAsyncException(t, check.validate(store, { key: ['foo', -1] }), /^InvalidRuleError: param\.validation\.error\(TupleCheck\[k:key\], NaN, Error: NaN/, false)
   await testAsyncException(t, check.validate(store, { key: ['foo', 0] }), 'InvalidRuleError: param.invalid.predicate(TupleCheck[k:key], ["foo",0], ([a, b]) => a.length === b)')
   await testAsyncException(t, check.validate(store, { key: ['foo', 3.14159] }), 'InvalidRuleError: param.invalid.tuple.item.at(TupleCheck[k:key], 1, param.invalid.predicate(NumberCheck[], 3.14159, Number.isInteger()))')
@@ -85,15 +83,15 @@ test('Checks.Tuple Str Num predicate', async function (t) {
   t.end()
 })
 
-test('Checks.Tuple Enum Num Bool', async function (t) {
+test('Checks Tuple Enum Num Bool', async function (t) {
   const store = new Store()
-    , check = Checks.Tuple('key', [
-      Checks.Enum('', ['foo', 'bar']),
-      Checks.Num().min(0), Checks.Bool()
-    ])
+  const check = Tuple('key', [
+    Enum('', ['foo', 'bar']),
+    Num().min(0), Bool()
+  ])
 
-  t.ok('undefined' === typeof await check.validate(store, { key: ['bar', 0, true] }))
-  t.ok('undefined' === typeof await check.validate(store, { key: ['foo', 3.14159, false] }))
+  t.ok(typeof await check.validate(store, { key: ['bar', 0, true] }) === 'undefined')
+  t.ok(typeof await check.validate(store, { key: ['foo', 3.14159, false] }) === 'undefined')
   await testAsyncException(t, check.validate(store, { key: ['bar', -1e10, true] }), 'InvalidRuleError: param.invalid.tuple.item.at(TupleCheck[k:key], 1, param.invalid.predicate(NumberCheck[], -10000000000, x >= 0))')
   await testAsyncException(t, check.validate(store, { key: ['bar', -1e10, true, undefined] }), 'InvalidRuleError: param.invalid.tuple.wrong.length.expected.actual(TupleCheck[k:key], 3, 4, ["bar",-10000000000,true,null])')
   await testAsyncException(t, check.validate(store, { key: ['plop', 42, false] }), 'InvalidRuleError: param.invalid.tuple.item.at(TupleCheck[k:key], 0, param.invalid.enum("plop"))')
@@ -114,12 +112,12 @@ test('Checks.Tuple Enum Num Bool', async function (t) {
   t.end()
 })
 
-test('Checks.Tuple bad def', async function (t) {
+test('Checks Tuple bad def', async function (t) {
   try {
-    Checks.Tuple('key', [])
+    Tuple('key', [])
     t.fail('should have failed')
   } catch (e) {
-    t.ok(e instanceof Checks.InvalidRuleError)
+    t.ok(e instanceof InvalidRuleError)
     t.deepEqual(e.toString(), 'InvalidRuleError: param.invalid.tuple.build.no.definitions(TupleCheck[k:key])')
   }
 
