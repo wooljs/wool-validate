@@ -10,7 +10,7 @@
  */
 
 import test from 'tape'
-import { Any, Enum, Has, InvalidRuleError, None } from '../index.js'
+import { Any, Enum, Has, InvalidRuleError } from '../index.js'
 import { Store } from 'wool-store'
 import { testAsyncException } from './common.js'
 
@@ -131,11 +131,11 @@ test('Checks Has, present, optional, absent', async function (t) {
   t.end()
 })
 
-test('Checks None', async function (t) {
+test('Checks Any no key', async function (t) {
   const store = new Store()
-  const check = None()
+  const check = Any()
 
-  t.deepEqual(check.toFullString(), 'NoCheck[]')
+  t.deepEqual(check.toFullString(), 'AnyCheck[(*)]')
 
   t.ok(typeof await check.validate(store, { }) === 'undefined')
   t.ok(typeof await check.validate(store, { key: true }) === 'undefined')
@@ -149,17 +149,22 @@ test('Checks None', async function (t) {
 
 test('Checks Any', async function (t) {
   const store = new Store()
-  const check = Any()
+  const check = Any('key')
 
-  t.deepEqual(check.toFullString(), 'NoCheck[]')
+  t.deepEqual(check.toFullString(), 'AnyCheck[k:key]')
 
-  t.ok(typeof await check.validate(store, { }) === 'undefined')
   t.ok(typeof await check.validate(store, { key: true }) === 'undefined')
   t.ok(typeof await check.validate(store, { key: false }) === 'undefined')
+  t.ok(typeof await check.validate(store, { key: [] }) === 'undefined')
+  t.ok(typeof await check.validate(store, { key: [1, 2, 'toto'] }) === 'undefined')
+  t.ok(typeof await check.validate(store, { key: { foo: 42, bar: 'barbar' } }) === 'undefined')
   t.ok(typeof await check.validate(store, { key: 'foo' }) === 'undefined')
-  t.ok(typeof await check.validate(store, { foo: 42 }) === 'undefined')
-  t.ok(typeof await check.validate(store, { key: true, bar: 42, foo: 'bar' }) === 'undefined')
-  t.plan(7)
+  t.ok(typeof await check.validate(store, { key: 'true', bar: 42, foo: 'bar' }) === 'undefined')
+
+  await testAsyncException(t, check.validate(store, { }), 'InvalidRuleError: param.should.be.present(AnyCheck[k:key])')
+  await testAsyncException(t, check.validate(store, { foo: 42 }), 'InvalidRuleError: param.should.be.present(AnyCheck[k:key])')
+
+  t.plan(12)
   t.end()
 })
 

@@ -12,7 +12,7 @@
 import ParamCheck from '../lib/ParamCheck.js'
 
 import test from 'tape'
-import { Enum, InvalidRuleError, Num, Str, Struct } from '../index.js'
+import { Enum, InvalidRuleError, Num, Str, Struct, Any } from '../index.js'
 import { Store } from 'wool-store'
 import { testAsyncException } from './common.js'
 
@@ -138,6 +138,25 @@ test('Checks Struct + deep Struct optional/absent', async function (t) {
   await testAsyncException(t, check.validate(store, { key: { str: 'plop', opt: { str: 'foo', int: 17 }, abs: { str: 'bar', int: 9536 } } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.invalid.struct.item(StructCheck[k:abs], param.should.be.absent(StrCheck[k:str])))')
 
   t.plan(5)
+  t.end()
+})
+
+test('Checks Struct + Any', async function (t) {
+  const store = new Store()
+  const str = Str('str')
+  const any = Any('foo')
+  const check = Struct('key', [str, any])
+
+  t.deepEqual(check.toFullString(), 'StructCheck[k:key]{ StrCheck[k:str], AnyCheck[k:foo] }')
+
+  t.ok(typeof await check.validate(store, { key: { str: 'plop', foo: 42 } }) === 'undefined')
+  t.ok(typeof await check.validate(store, { key: { str: 'plop', foo: 'bar' } }) === 'undefined')
+
+  t.ok(typeof await check.validate(store, { key: { str: 'plop', foo: { str: 'xx', int: 42 }, abs: { int: 666 } } }) === 'undefined')
+
+  await testAsyncException(t, check.validate(store, { key: { str: 'plop', opt: { str: 'foo', int: 17 }, abs: { str: 'bar', int: 9536 } } }), 'InvalidRuleError: param.invalid.struct.item(StructCheck[k:key], param.should.be.present(AnyCheck[k:foo]))')
+
+  t.plan(6)
   t.end()
 })
 

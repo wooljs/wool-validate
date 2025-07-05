@@ -10,7 +10,7 @@
  */
 
 import test from 'tape'
-import { Dict, Enum, Id, InvalidRuleError, Num, Str, Struct } from '../index.js'
+import { Dict, Enum, Id, InvalidRuleError, Num, Str, Struct, Any } from '../index.js'
 import { Store } from 'wool-store'
 import { testAsyncException } from './common.js'
 
@@ -216,5 +216,26 @@ test('Checks Dict Str Num .transform', async function (t) {
   await testAsyncException(t, check.validate(store, { foo: 'bar' }), 'InvalidRuleError: param.should.be.present(T<DictCheck>[k:key])')
 
   t.plan(28)
+  t.end()
+})
+
+test('Checks Dict Str Any', async function (t) {
+  const store = new Store()
+  const check = Dict('key',
+    Str(),
+    Any()
+  )
+
+  t.ok(typeof await check.validate(store, { key: {} }) === 'undefined')
+  t.ok(typeof await check.validate(store, { key: { foo: 42 } }) === 'undefined')
+  t.ok(typeof await check.validate(store, { key: { bar: 'bar' } }) === 'undefined')
+  t.ok(typeof await check.validate(store, { key: { 'an object': { foo: 'bar' } } }) === 'undefined')
+  t.ok(typeof await check.validate(store, { key: { 'an array': [1, 2, 3, 'plop', { x: 'foo' }] } }) === 'undefined')
+  t.ok(typeof await check.validate(store, { key: { 42: 'foo' } }) === 'undefined')
+
+  await testAsyncException(t, check.validate(store, { key: [] }), 'InvalidRuleError: param.invalid.dict(DictCheck[k:key], [])')
+  await testAsyncException(t, check.validate(store, { key: ['plop'] }), 'InvalidRuleError: param.invalid.dict(DictCheck[k:key], ["plop"])')
+
+  t.plan(10)
   t.end()
 })

@@ -18,13 +18,13 @@ import NumberCheck from './lib/NumberCheck.js'
 import StructCheck from './lib/StructCheck.js'
 import ValidId from './lib/ValidId.js'
 import MultiCheck from './lib/MultiCheck.js'
-import NoCheck from './lib/NoCheck.js'
+import AnyCheck from './lib/AnyCheck.js'
 import ListCheck from './lib/ListCheck.js'
 import DictCheck from './lib/DictCheck.js'
 import TupleCheck from './lib/TupleCheck.js'
 import EitherCheck from './lib/EitherCheck.js'
 
-const Any = NoCheck.build
+const Any = AnyCheck.build
 const Bool = BoolCheck.build
 const Dict = DictCheck.build
 const Enum = EnumCheck.build
@@ -33,7 +33,6 @@ const Has = ParamCheck.build
 const Id = ValidId.build
 const List = ListCheck.build
 const Multi = MultiCheck.build
-const None = NoCheck.build
 const Num = NumberCheck.build
 const Str = StrCheck.build
 const Struct = StructCheck.build
@@ -49,7 +48,7 @@ export {
   StructCheck,
   ValidId,
   MultiCheck,
-  NoCheck,
+  AnyCheck,
   ListCheck,
   DictCheck,
   TupleCheck,
@@ -63,7 +62,6 @@ export {
   Id,
   List,
   Multi,
-  None,
   Num,
   Str,
   Struct,
